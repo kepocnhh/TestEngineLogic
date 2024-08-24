@@ -1,5 +1,7 @@
 package test.engine.logic
 
+import sp.kx.lwjgl.util.EngineUtil
+
 fun main() {
-    println("Hello test engine logic!")
+    EngineUtil.run(::InputEngineLogic)
 }
