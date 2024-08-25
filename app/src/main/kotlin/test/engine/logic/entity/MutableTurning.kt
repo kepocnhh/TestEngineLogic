@@ -4,15 +4,17 @@ import sp.kx.math.dby
 import sp.kx.math.eq
 import sp.kx.math.ifNaN
 import sp.kx.math.measure.MutableDeviation
+import sp.kx.math.measure.Speed
 import sp.kx.math.measure.diff
 import sp.kx.math.radians
 import sp.kx.math.whc
 import kotlin.math.absoluteValue
 import kotlin.time.Duration
 
-internal interface MutableTurning : Turning {
-    override val direction: MutableDeviation<Double>
-
+internal class MutableTurning(
+    override val direction: MutableDeviation<Double>,
+    override val directionSpeed: Speed,
+) : Turning {
     fun turn(radians: Double, timeDiff: Duration) {
         direction.expected = radians
         val dirDiff = direction.diff()

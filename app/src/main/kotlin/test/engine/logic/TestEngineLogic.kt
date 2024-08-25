@@ -27,6 +27,7 @@ import sp.kx.math.measure.frequency
 import sp.kx.math.measure.speedOf
 import sp.kx.math.minus
 import sp.kx.math.moved
+import sp.kx.math.offsetOf
 import sp.kx.math.pointOf
 import sp.kx.math.radians
 import sp.kx.math.vectorOf
@@ -34,24 +35,31 @@ import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
 import test.engine.logic.util.FontInfoUtil
 import test.engine.logic.util.minus
+import test.engine.logic.util.plus
 import test.engine.logic.util.toVectors
 import java.util.concurrent.TimeUnit
 
 internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     private class Player(
-        point: Point,
-        speed: Speed,
-        override val direction: MutableDeviation<Double>,
-        override val directionSpeed: Speed,
-    ) : MutableMoving, MutableTurning {
-        override val point = MutablePoint(x = point.x, y = point.y)
-        override val speed = MutableSpeed(magnitude = speed.per(TimeUnit.NANOSECONDS), timeUnit = TimeUnit.NANOSECONDS)
-    }
+        val moving: MutableMoving,
+        val turning: MutableTurning,
+    )
 
     private class Environment(
         val walls: List<Vector>,
         val player: Player,
-    )
+        val camera: MutableMoving,
+        private var isCameraFree: Boolean,
+    ) {
+        fun isCameraFree(): Boolean {
+            return isCameraFree
+        }
+
+        fun switchCamera() {
+            camera.point.set(player.moving.point)
+            isCameraFree = !isCameraFree
+        }
+    }
 
     private val env = getEnvironment()
 
@@ -80,6 +88,9 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                             32.0 -> measure.magnitude = 24.0
                         }
                     }
+                }
+                KeyboardButton.C -> {
+                    if (!isPressed) env.switchCamera()
                 }
                 else -> {
                     println("[$TAG]: on button: $button $isPressed")
@@ -155,21 +166,44 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         // todo y
     }
 
-    private fun onWalking() {
-        val playerOffset = engine.input.keyboard.getPlayerOffset()
-        if (playerOffset.isEmpty()) return
+    private fun movePlayer() {
+        val offset = engine.input.keyboard.getOffset(
+            upKey = KeyboardButton.W,
+            downKey = KeyboardButton.S,
+            leftKey = KeyboardButton.A,
+            rightKey = KeyboardButton.D,
+        )
+        if (offset.isEmpty()) return
         val timeDiff = engine.property.time.diff()
-        env.player.turn(
-            radians = angleOf(playerOffset).radians(),
+        env.player.turning.turn(
+            radians = angleOf(offset).radians(),
             timeDiff = timeDiff,
         )
-        val length = env.player.speed.length(timeDiff)
-        val multiplier = kotlin.math.min(1.0, distanceOf(playerOffset))
-        val target = env.player.point.moved(
+        val length = env.player.moving.speed.length(timeDiff)
+        val multiplier = kotlin.math.min(1.0, distanceOf(offset))
+        val target = env.player.moving.point.moved(
             length = length * multiplier,
-            angle = env.player.direction.expected,
+            angle = env.player.turning.direction.expected,
         )
-        env.player.point.set(target)
+        env.player.moving.point.set(target)
+    }
+
+    private fun moveCamera() {
+        val offset = engine.input.keyboard.getOffset(
+            upKey = KeyboardButton.UP,
+            downKey = KeyboardButton.DOWN,
+            leftKey = KeyboardButton.LEFT,
+            rightKey = KeyboardButton.RIGHT,
+        )
+        if (offset.isEmpty()) return
+        val timeDiff = engine.property.time.diff()
+        val length = env.camera.speed.length(timeDiff)
+        val multiplier = kotlin.math.min(1.0, distanceOf(offset))
+        val target = env.camera.point.moved(
+            length = length * multiplier,
+            angle = angleOf(offset).radians(),
+        )
+        env.camera.point.set(target)
     }
 
     private fun onRenderDebug(
@@ -187,9 +221,16 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 x = 2.0,
                 y = 2.0 + y++,
             ),
-            text = String.format("Picture size: %.1fx%.1f", engine.property.pictureSize.width, engine.property.pictureSize.height),
+            text = String.format(
+                "Picture: %.1fx%.1f (%.2fx%.2f)",
+                engine.property.pictureSize.width,
+                engine.property.pictureSize.height,
+                pictureSize.width,
+                pictureSize.height,
+            ),
             measure = measure,
         )
+        val point = env.player.moving.point
         canvas.texts.draw(
             color = Color.GREEN,
             info = info,
@@ -197,18 +238,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 x = 2.0,
                 y = 2.0 + y++,
             ),
-            text = String.format("Picture size(measured): %.2fx%.2f", pictureSize.width, pictureSize.height),
-            measure = measure,
-        )
-        val point = env.player.point
-        canvas.texts.draw(
-            color = Color.GREEN,
-            info = info,
-            pointTopLeft = pointOf(
-                x = 2.0,
-                y = 2.0 + y++,
-            ),
-            text = String.format("Player point: {x: %.2f, y: %.2f}", point.x, point.y),
+            text = String.format("Player: {x: %.2f, y: %.2f}", point.x, point.y),
             measure = measure,
         )
     }
@@ -220,10 +250,40 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     ) {
         canvas.vectors.draw(
             color = Color.WHITE,
-            vector = vectorOf(Point.Center, length = 1.0, angle = env.player.direction.actual),
+            vector = vectorOf(env.player.moving.point, length = 1.0, angle = env.player.turning.direction.actual),
             offset = offset,
             measure = measure,
             lineWidth = 0.1,
+        )
+    }
+
+    private fun onRenderCamera(
+        canvas: Canvas,
+        offset: Offset,
+        measure: Measure<Double, Double>,
+    ) {
+        canvas.vectors.draw(
+            color = Color.GREEN,
+            vector = vectorOf(-1.0, 0.0, 1.0, 0.0),
+            offset = offset,
+            measure = measure,
+            lineWidth = 0.1,
+        )
+        canvas.vectors.draw(
+            color = Color.GREEN,
+            vector = vectorOf(0.0, -1.0, 0.0, 1.0),
+            offset = offset,
+            measure = measure,
+            lineWidth = 0.1,
+        )
+        val info = FontInfoUtil.getFontInfo(height = 0.75, measure = measure)
+        canvas.texts.draw(
+            color = Color.GREEN,
+            info = info,
+            pointTopLeft = Point.Center.moved(0.5),
+            text = String.format("x: %.2f y: %.2f", env.camera.point.x, env.camera.point.y),
+            offset = offset,
+            measure = measure,
         )
     }
 
@@ -237,12 +297,20 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
 //            measure = measure,
 //        )
         //
-        onWalking() // todo
+        movePlayer() // todo
+        if (env.isCameraFree()) {
+            moveCamera()
+        }
         //
+        val pictureSize = engine.property.pictureSize - measure
         val centerPoint = engine.property.pictureSize.centerPoint() - measure
         val centerOffset = engine.property.pictureSize.center() - measure
-        val playerPoint = env.player.point
-        val offset = centerPoint - playerPoint
+        val point = if (env.isCameraFree()) {
+            env.camera.point
+        } else {
+            env.player.moving.point
+        }
+        val offset = centerPoint - point
         //
         canvas.vectors.draw(
             color = Color.GRAY,
@@ -252,16 +320,27 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )
         onRenderPlayer(
             canvas = canvas,
-            offset = centerOffset,
+            offset = if (env.isCameraFree()) {
+                offset
+            } else {
+                centerPoint - env.player.moving.point
+            },
             measure = measure,
         )
+        if (env.isCameraFree()) {
+            onRenderCamera(
+                canvas = canvas,
+                offset = centerOffset,
+                measure = measure,
+            )
+        }
         // todo
         //
         onRenderGrid(
             canvas = canvas,
             offset = offset,
             measure = measure,
-            point = playerPoint,
+            point = point,
         )
         //
         if (engine.input.keyboard.isPressed(KeyboardButton.I)) {
@@ -286,29 +365,42 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 pointOf(x = 1, y = 1),
             ).toVectors()
             val player = Player(
-                point = pointOf(x = 0, y = 0),
-                speed = speedOf(magnitude = 7.5, timeUnit = TimeUnit.SECONDS),
-                direction = MutableDeviation(actual = 0.0, expected = 0.0),
-                directionSpeed = speedOf(kotlin.math.PI * 2),
+                moving = MutableMoving(
+                    point = MutablePoint(x = 0.0, y = 0.0),
+                    speed = MutableSpeed(magnitude = 8.0, timeUnit = TimeUnit.SECONDS),
+                ),
+                turning = MutableTurning(
+                    direction = MutableDeviation(actual = 0.0, expected = 0.0),
+                    directionSpeed = speedOf(kotlin.math.PI * 2),
+                ),
+            )
+            val camera = MutableMoving(
+                point = MutablePoint(x = 0.0, y = 0.0),
+                speed = MutableSpeed(magnitude = 8.0, timeUnit = TimeUnit.SECONDS),
             )
             return Environment(
                 walls = walls,
                 player = player,
+                camera = camera,
+                isCameraFree = false,
             )
         }
 
-        private fun Keyboard.getPlayerOffset(): Offset {
+        private fun Keyboard.getOffset(
+            upKey: KeyboardButton,
+            downKey: KeyboardButton,
+            leftKey: KeyboardButton,
+            rightKey: KeyboardButton,
+        ): Offset {
             val result = MutableOffset(dX = 0.0, dY = 0.0)
-            val up = isPressed(KeyboardButton.W) || isPressed(KeyboardButton.UP)
-            val down = isPressed(KeyboardButton.S) || isPressed(KeyboardButton.DOWN)
-            if (up) {
+            val down = isPressed(downKey)
+            if (isPressed(upKey)) {
                 if (!down) result.dY = -1.0
             } else if (down) {
                 result.dY = 1.0
             }
-            val left = isPressed(KeyboardButton.A) || isPressed(KeyboardButton.LEFT)
-            val right = isPressed(KeyboardButton.D) || isPressed(KeyboardButton.RIGHT)
-            if (left) {
+            val right = isPressed(rightKey)
+            if (isPressed(leftKey)) {
                 if (!right) result.dX = -1.0
             } else if (right) {
                 result.dX = 1.0
