@@ -15,6 +15,7 @@ import sp.kx.math.Vector
 import sp.kx.math.angleOf
 import sp.kx.math.center
 import sp.kx.math.centerPoint
+import sp.kx.math.dby
 import sp.kx.math.distanceOf
 import sp.kx.math.isEmpty
 import sp.kx.math.measure.Measure
@@ -28,6 +29,7 @@ import sp.kx.math.measure.speedOf
 import sp.kx.math.minus
 import sp.kx.math.moved
 import sp.kx.math.offsetOf
+import sp.kx.math.plus
 import sp.kx.math.pointOf
 import sp.kx.math.radians
 import sp.kx.math.vectorOf
@@ -38,6 +40,7 @@ import test.engine.logic.util.minus
 import test.engine.logic.util.plus
 import test.engine.logic.util.toVectors
 import java.util.concurrent.TimeUnit
+import kotlin.math.absoluteValue
 
 internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     private class Player(
@@ -128,42 +131,69 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             lineWidth = 0.1,
             measure = measure,
         )
-        // todo y
+        canvas.vectors.draw(
+            color = Color.WHITE,
+            vector = vectorOf(
+                startX = 0.0,
+                startY = pictureSize.height / 2,
+                finishX = 2.0,
+                finishY = pictureSize.height / 2,
+            ),
+            lineWidth = 0.1,
+            measure = measure,
+        )
+        canvas.vectors.draw(
+            color = Color.GREEN,
+            vector = vectorOf(
+                startX = 1.0,
+                startY = 0.0,
+                finishX = 1.0,
+                finishY = pictureSize.height,
+            ),
+            lineWidth = 0.1,
+            measure = measure,
+        )
         val info = FontInfoUtil.getFontInfo(height = 0.75, measure = measure)
-        val xLen = (pictureSize.width.toInt() / 2) * 2 + 2
-        val xNumbers = (point.x.toInt() - xLen / 2 - 1)..(point.x.toInt() + xLen / 2 + 1)
+        val xHalf = pictureSize.width.toInt() / 2
+        val xNumber = kotlin.math.ceil(point.x).toInt()
+        val xNumbers = (xNumber - xHalf - 2)..(xNumber + xHalf)
         for (x in xNumbers) {
             val textY = if (x % 2 == 0) 1.0 else 0.25
             canvas.texts.draw(
                 color = Color.GREEN,
                 info = info,
-                pointTopLeft = pointOf(x = x + offset.dX, y = textY),
+                pointTopLeft = pointOf(x = x + offset.dX + 0.25, y = textY),
                 measure = measure,
                 text = String.format("%2d", x),
             )
+            val lineY = if (x % 2 == 0) 1.5 else 0.5
+            canvas.vectors.draw(
+                color = Color.GREEN,
+                vector = pointOf(x = x + offset.dX, y = 1.0) + pointOf(x = x + offset.dX, y = lineY),
+                lineWidth = 0.1,
+                measure = measure,
+            )
         }
-//        val xLen = measure.units(engine.property.pictureSize.width).toInt() - 6
-//        val xNumbers = (point.x.toInt() - xLen / 2)..(point.x.toInt() + xLen / 2)
-//        for (x in xNumbers) {
-//            val textY = if (x % 2 == 0) 1.0 else 0.25
-//            val xOffset = offset.copy(dY = 0.0)
-//            canvas.texts.draw(
-//                color = Color.GREEN,
-//                info = info,
-//                pointTopLeft = pointOf(x = x.toDouble(), y = textY),
-//                offset = xOffset,
-//                measure = measure,
-//                text = String.format("%2d", x),
-//            )
-//            val lineY = if (x % 2 == 0) 1.5 else 0.5
-//            canvas.vectors.draw(
-//                color = Color.GREEN,
-//                vector = pointOf(x = x.toDouble(), y = 1.0) + pointOf(x = x.toDouble(), y = lineY),
-//                offset = xOffset,
-//                measure = measure,
-//            )
-//        }
-        // todo y
+        val yHalf = pictureSize.height.toInt() / 2
+        val yNumber = kotlin.math.ceil(point.y).toInt()
+        val yNumbers = (yNumber - yHalf + 2)..(yNumber + yHalf)
+        for (y in yNumbers) {
+            val textX = if (y % 2 == 0) 1.25 else 1.75
+            canvas.texts.draw(
+                color = Color.GREEN,
+                info = info,
+                pointTopLeft = pointOf(x = textX, y = y + offset.dY),
+                measure = measure,
+                text = String.format("%2d", y),
+            )
+            val lineX = if (y % 2 == 0) 0.5 else 1.5
+            canvas.vectors.draw(
+                color = Color.GREEN,
+                vector = pointOf(x = 1.0, y = y + offset.dY) + pointOf(x = lineX, y = y + offset.dY),
+                lineWidth = 0.1,
+                measure = measure,
+            )
+        }
     }
 
     private fun movePlayer() {
@@ -218,7 +248,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             color = Color.GREEN,
             info = info,
             pointTopLeft = pointOf(
-                x = 2.0,
+                x = 4.0,
                 y = 2.0 + y++,
             ),
             text = String.format(
@@ -235,7 +265,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             color = Color.GREEN,
             info = info,
             pointTopLeft = pointOf(
-                x = 2.0,
+                x = 4.0,
                 y = 2.0 + y++,
             ),
             text = String.format("Player: {x: %.2f, y: %.2f}", point.x, point.y),
