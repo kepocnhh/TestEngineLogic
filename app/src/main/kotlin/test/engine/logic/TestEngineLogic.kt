@@ -13,11 +13,10 @@ import sp.kx.math.Offset
 import sp.kx.math.Point
 import sp.kx.math.Vector
 import sp.kx.math.angleOf
+import sp.kx.math.center
 import sp.kx.math.centerPoint
-import sp.kx.math.copy
 import sp.kx.math.distanceOf
 import sp.kx.math.isEmpty
-import sp.kx.math.measure.Deviation
 import sp.kx.math.measure.Measure
 import sp.kx.math.measure.MutableDeviation
 import sp.kx.math.measure.MutableDoubleMeasure
@@ -28,10 +27,8 @@ import sp.kx.math.measure.frequency
 import sp.kx.math.measure.speedOf
 import sp.kx.math.minus
 import sp.kx.math.moved
-import sp.kx.math.plus
 import sp.kx.math.pointOf
 import sp.kx.math.radians
-import sp.kx.math.toVector
 import sp.kx.math.vectorOf
 import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
@@ -162,8 +159,10 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         val playerOffset = engine.input.keyboard.getPlayerOffset()
         if (playerOffset.isEmpty()) return
         val timeDiff = engine.property.time.diff()
-        env.player.direction.expected = angleOf(playerOffset).radians()
-        val dirDiff = env.player.direction.diff() // todo
+        env.player.turn(
+            radians = angleOf(playerOffset).radians(),
+            timeDiff = timeDiff,
+        )
         val length = env.player.speed.length(timeDiff)
         val multiplier = kotlin.math.min(1.0, distanceOf(playerOffset))
         val target = env.player.point.moved(
@@ -214,6 +213,20 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )
     }
 
+    private fun onRenderPlayer(
+        canvas: Canvas,
+        offset: Offset,
+        measure: Measure<Double, Double>,
+    ) {
+        canvas.vectors.draw(
+            color = Color.WHITE,
+            vector = vectorOf(Point.Center, length = 1.0, angle = env.player.direction.actual),
+            offset = offset,
+            measure = measure,
+            lineWidth = 0.1,
+        )
+    }
+
     override fun onRender(canvas: Canvas) {
         val fps = engine.property.time.frequency()
 //        canvas.texts.draw(
@@ -226,17 +239,20 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         //
         onWalking() // todo
         //
-        val center = pointOf(
-            x = measure.units(engine.property.pictureSize.width / 2),
-            y = measure.units(engine.property.pictureSize.height / 2),
-        )
-        val point = env.player.point
-        val offset = center - point
+        val centerPoint = engine.property.pictureSize.centerPoint() - measure
+        val centerOffset = engine.property.pictureSize.center() - measure
+        val playerPoint = env.player.point
+        val offset = centerPoint - playerPoint
         //
         canvas.vectors.draw(
             color = Color.GRAY,
             vectors = env.walls,
             offset = offset,
+            measure = measure,
+        )
+        onRenderPlayer(
+            canvas = canvas,
+            offset = centerOffset,
             measure = measure,
         )
         // todo
@@ -245,7 +261,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             canvas = canvas,
             offset = offset,
             measure = measure,
-            point = point,
+            point = playerPoint,
         )
         //
         if (engine.input.keyboard.isPressed(KeyboardButton.I)) {
