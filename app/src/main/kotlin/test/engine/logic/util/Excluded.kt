@@ -1,13 +1,16 @@
 package test.engine.logic.util
 
 import org.lwjgl.opengl.GL11
+import sp.kx.lwjgl.entity.Canvas
 import sp.kx.lwjgl.entity.Color
+import sp.kx.lwjgl.entity.PolygonDrawer
 import sp.kx.lwjgl.opengl.GLUtil
 import sp.kx.math.Offset
 import sp.kx.math.Point
 import sp.kx.math.Size
 import sp.kx.math.Vector
 import sp.kx.math.angle
+import sp.kx.math.angleOf
 import sp.kx.math.getShortestDistance
 import sp.kx.math.lt
 import sp.kx.math.measure.Measure
@@ -116,4 +119,63 @@ internal fun Iterable<Vector>.closerThan(point: Point, minDistance: Double): Boo
         if (vector.closerThan(point = point, minDistance = minDistance)) return true
     }
     return false
+}
+
+@Deprecated(message = "sp.kx.math.drawRectangle")
+internal fun PolygonDrawer.drawRectangle(
+    color: Color,
+    pointTopLeft: Point,
+    size: Size,
+    direction: Double,
+    pointOfRotation: Point,
+    offset: Offset,
+    measure: Measure<Double, Double>,
+) {
+    GLUtil.onMatrix {
+        GLUtil.translated(point = pointOfRotation, offset = offset, measure = measure)
+        GL11.glRotated(Math.toDegrees(direction), 0.0, 0.0, 1.0)
+        drawRectangle(
+            color = color,
+            pointTopLeft = pointTopLeft.plus(
+                dX = -pointOfRotation.x,
+                dY = -pointOfRotation.y,
+            ),
+            size = size,
+            measure = measure,
+        )
+    }
+}
+
+@Deprecated("sp.kx.math.diagonal")
+internal fun Size.diagonal(): Double {
+    return kotlin.math.sqrt(width * width + height * height)
+}
+
+@Deprecated("sp.kx.math.diagonal")
+internal fun Size.diagonalAngle(): Double {
+    return angleOf(x = width, y = height)
+}
+
+internal fun PolygonDrawer.drawCircle(
+    color: Color,
+    pointCenter: Point,
+    radius: Double,
+    edgeCount: Int,
+    offset: Offset,
+    measure: Measure<Double, Double>,
+) {
+    val points = (0..edgeCount).map {
+        val radians = it * 2 * kotlin.math.PI / edgeCount
+        pointCenter.plus(
+            dX = kotlin.math.cos(radians) * radius,
+            dY = kotlin.math.sin(radians) * radius,
+        )
+    }
+    GL11.glLineWidth(1f)
+    GLUtil.colorOf(color)
+    GLUtil.transaction(GL11.GL_POLYGON) {
+        points.forEach {
+            GLUtil.vertexOf(it, offset = offset, measure = measure)
+        }
+    }
 }

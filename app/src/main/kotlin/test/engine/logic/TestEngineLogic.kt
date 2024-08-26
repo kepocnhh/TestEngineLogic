@@ -12,6 +12,7 @@ import sp.kx.math.MutablePoint
 import sp.kx.math.Offset
 import sp.kx.math.Point
 import sp.kx.math.Vector
+import sp.kx.math.angle
 import sp.kx.math.angleOf
 import sp.kx.math.center
 import sp.kx.math.centerPoint
@@ -33,12 +34,18 @@ import sp.kx.math.offsetOf
 import sp.kx.math.plus
 import sp.kx.math.pointOf
 import sp.kx.math.radians
+import sp.kx.math.sizeOf
 import sp.kx.math.vectorOf
+import test.engine.logic.entity.Barrier
 import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
 import test.engine.logic.util.FontInfoUtil
 import test.engine.logic.util.closerThan
+import test.engine.logic.util.diagonal
+import test.engine.logic.util.diagonalAngle
+import test.engine.logic.util.drawRectangle
 import test.engine.logic.util.drawVectors
+import test.engine.logic.util.drawCircle
 import test.engine.logic.util.minus
 import test.engine.logic.util.plus
 import test.engine.logic.util.toVectors
@@ -56,6 +63,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         val player: Player,
         val camera: MutableMoving,
         private var isCameraFree: Boolean,
+        val barriers: List<Barrier>,
     ) {
         fun isCameraFree(): Boolean {
             return isCameraFree
@@ -84,7 +92,8 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                         when (measure.magnitude) {
                             16.0 -> measure.magnitude = 24.0
                             24.0 -> measure.magnitude = 32.0
-                            32.0 -> measure.magnitude = 16.0
+                            32.0 -> measure.magnitude = 40.0
+                            40.0 -> measure.magnitude = 16.0
                         }
                     }
                 }
@@ -316,6 +325,63 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )
     }
 
+    private fun onRenderWalls(
+        canvas: Canvas,
+        offset: Offset,
+        measure: Measure<Double, Double>,
+        walls: List<Vector>,
+    ) {
+//        drawVectors(
+        canvas.vectors.draw(
+            color = Color.GRAY,
+            vectors = walls,
+            offset = offset,
+            measure = measure,
+            lineWidth = 0.1,
+        )
+    }
+
+    private fun onRenderBarriers(
+        canvas: Canvas,
+        offset: Offset,
+        measure: Measure<Double, Double>,
+        barriers: List<Barrier>,
+    ) {
+        for (barrier in barriers) {
+            if (!barrier.opened) {
+                canvas.vectors.draw(
+                    color = Color.RED,
+                    vector = barrier.vector,
+                    offset = offset,
+                    measure = measure,
+                    lineWidth = 0.2,
+                )
+            }
+            val size = sizeOf(0.3, 0.3)
+            val angle = barrier.vector.angle()
+            val startPoint = barrier.vector.start.moved(length = size.diagonal() / 2, angle = angle - kotlin.math.PI / 2 - size.diagonalAngle())
+            canvas.polygons.drawRectangle(
+                color = Color.YELLOW,
+                pointTopLeft = startPoint,
+                size = size,
+                pointOfRotation = startPoint,
+                offset = offset,
+                measure = measure,
+                direction = angle,
+            )
+            val finishPoint = barrier.vector.finish.moved(length = size.diagonal() / 2, angle = angle - kotlin.math.PI / 2 - size.diagonalAngle())
+            canvas.polygons.drawRectangle(
+                color = Color.YELLOW,
+                pointTopLeft = finishPoint,
+                size = size,
+                pointOfRotation = finishPoint,
+                offset = offset,
+                measure = measure,
+                direction = angle,
+            )
+        }
+    }
+
     private fun onRenderPlayer(
         canvas: Canvas,
         offset: Offset,
@@ -402,12 +468,11 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         }
         val offset = centerPoint - point
         //
-        drawVectors(
-            color = Color.GRAY,
-            vectors = env.walls,
+        onRenderWalls(
+            canvas = canvas,
+            walls = env.walls,
             offset = offset,
             measure = measure,
-            lineWidth = 0.1,
         )
         onRenderPlayer(
             canvas = canvas,
@@ -425,6 +490,12 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 measure = measure,
             )
         }
+        onRenderBarriers(
+            canvas = canvas,
+            barriers = env.barriers,
+            offset = offset,
+            measure = measure,
+        )
         // todo
         //
         onRenderGrid(
@@ -452,10 +523,21 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
 
         private fun getEnvironment(): Environment {
             val walls = listOf(
-                pointOf(x = 4, y = -4),
-                pointOf(x = 6, y = -2),
-                pointOf(x = 8, y = -2),
-                pointOf(x = 8, y = 2),
+                pointOf(x = 4, y = 2),
+                pointOf(x = 6, y = 0),
+                pointOf(x = 6, y = -6),
+                pointOf(x = 4, y = -8),
+                //
+                pointOf(x = -2, y = -8),
+                pointOf(x = -6, y = -12),
+                pointOf(x = -10, y = -8),
+                pointOf(x = -6, y = -4),
+                //
+                pointOf(x = -6, y = -2),
+                pointOf(x = -2, y = 2),
+                pointOf(x = -2, y = 6),
+                pointOf(x = 4, y = 6),
+                pointOf(x = 4, y = 2),
             ).toVectors()
             val player = Player(
                 moving = MutableMoving(
@@ -471,11 +553,22 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 point = MutablePoint(x = 0.0, y = 0.0),
                 speed = MutableSpeed(magnitude = 8.0, timeUnit = TimeUnit.SECONDS),
             )
+            val barriers = listOf(
+                Barrier(
+                    vector = pointOf(x = -2, y = 2) + pointOf(x = 4, y = 2),
+                    opened = false,
+                ),
+                Barrier(
+                    vector = pointOf(x = -2, y = -8) + pointOf(x = -6, y = -4),
+                    opened = true,
+                ),
+            )
             return Environment(
                 walls = walls,
                 player = player,
                 camera = camera,
                 isCameraFree = false,
+                barriers = barriers,
             )
         }
 
