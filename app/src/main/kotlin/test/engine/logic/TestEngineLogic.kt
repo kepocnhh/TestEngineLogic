@@ -212,10 +212,8 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         val nearest = vectors.filter { vector ->
             vector.closerThan(point = player.moving.point, minDistance = targetDistance + minDistance)
         }
-        val filtered = nearest.filter { vector ->
-            vector.closerThan(point = target, minDistance = minDistance)
-        }
-        if (filtered.isEmpty()) return target
+        val anyCloser = nearest.closerThan(point = target, minDistance = minDistance)
+        if (!anyCloser) return target
         val correctedPoints = nearest.map { vector ->
             getCorrectedPoint(
                 minDistance = minDistance,
@@ -224,16 +222,14 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             )
         }
         val allowedPoints = correctedPoints.filter { point ->
-            nearest.none { vector ->
-                vector.closerThan(point = point, minDistance = minDistance)
-            }
+            !nearest.closerThan(point = point, minDistance = minDistance)
         }
         if (allowedPoints.isEmpty()) {
             println("[$TAG]: No allowed point!") // todo
             return null // todo
         }
-        return allowedPoints.maxByOrNull {
-            distanceOf(player.moving.point, it)
+        return allowedPoints.maxByOrNull { point ->
+            distanceOf(player.moving.point, point)
         }
     }
 

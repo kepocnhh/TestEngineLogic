@@ -109,3 +109,11 @@ internal fun drawVectors(
 internal fun Vector.closerThan(point: Point, minDistance: Double): Boolean {
     return getShortestDistance(point).lt(other = minDistance, points = 12)
 }
+
+@Deprecated(message = "sp.kx.math.closerThan")
+internal fun Iterable<Vector>.closerThan(point: Point, minDistance: Double): Boolean {
+    for (vector in this) {
+        if (vector.closerThan(point = point, minDistance = minDistance)) return true
+    }
+    return false
+}
