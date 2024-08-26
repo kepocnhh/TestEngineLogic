@@ -38,10 +38,13 @@ import sp.kx.math.plus
 import sp.kx.math.pointOf
 import sp.kx.math.radians
 import sp.kx.math.sizeOf
+import sp.kx.math.times
+import sp.kx.math.toOffset
 import sp.kx.math.vectorOf
 import test.engine.logic.entity.Barrier
 import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
+import test.engine.logic.entity.Relay
 import test.engine.logic.util.FontInfoUtil
 import test.engine.logic.util.closerThan
 import test.engine.logic.util.diagonal
@@ -52,6 +55,7 @@ import test.engine.logic.util.drawCircle
 import test.engine.logic.util.minus
 import test.engine.logic.util.plus
 import test.engine.logic.util.toVectors
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
 
@@ -67,6 +71,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         val camera: MutableMoving,
         private var isCameraFree: Boolean,
         val barriers: List<Barrier>,
+        val relays: List<Relay>,
     ) {
         fun isCameraFree(): Boolean {
             return isCameraFree
@@ -373,6 +378,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         measure: Measure<Double, Double>,
         barriers: List<Barrier>,
     ) {
+        val size = sizeOf(0.3, 0.3)
         for (barrier in barriers) {
             if (!barrier.opened) {
                 canvas.vectors.draw(
@@ -383,7 +389,6 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                     lineWidth = 0.2,
                 )
             }
-            val size = sizeOf(0.3, 0.3)
             val angle = barrier.vector.angle()
             val startPoint = barrier.vector.start.moved(length = size.diagonal() / 2, angle = angle - kotlin.math.PI / 2 - size.diagonalAngle())
             canvas.polygons.drawRectangle(
@@ -401,9 +406,38 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 pointTopLeft = finishPoint,
                 size = size,
                 pointOfRotation = finishPoint,
+                direction = angle,
                 offset = offset,
                 measure = measure,
-                direction = angle,
+            )
+        }
+    }
+
+    private fun onRenderRelays(
+        canvas: Canvas,
+        offset: Offset,
+        measure: Measure<Double, Double>,
+        relays: List<Relay>,
+    ) {
+        val size = sizeOf(2, 1)
+        val info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure)
+        for (relay in relays) {
+            canvas.polygons.drawRectangle(
+                color = if (relay.enabled) Color.GREEN else Color.RED,
+                pointTopLeft = relay.point,
+                size = size,
+                offset = offset + size.center() * -1.0,
+                measure = measure,
+            )
+            val text = if (relay.enabled) "on" else "off"
+            val textWidth = engine.fontAgent.getTextWidth(info, text)
+            canvas.texts.draw(
+                color = Color.BLACK,
+                info = info,
+                pointTopLeft = relay.point,
+                offset = offset + offsetOf(dX = measure.units(textWidth) / 2, dY = size.height / 2) * -1.0,
+                measure = measure,
+                text = text,
             )
         }
     }
@@ -477,6 +511,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     ): Barrier? {
         var nearest: Pair<Barrier, Double>? = null
         for (barrier in barriers) {
+            if (barrier.conditions.isNotEmpty()) continue
             val distance = barrier.vector.getShortestDistance(target)
             if (distance.lt(other = minDistance, points = 12)) continue
             if (distance.gt(other = maxDistance, points = 12)) continue
@@ -567,6 +602,12 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             offset = offset,
             measure = measure,
         )
+        onRenderRelays(
+            canvas = canvas,
+            relays = env.relays,
+            offset = offset,
+            measure = measure,
+        )
         //
         onRenderInteraction(
             canvas = canvas,
@@ -642,10 +683,23 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Barrier(
                     vector = pointOf(x = -2, y = 2) + pointOf(x = 4, y = 2),
                     opened = false,
+                    conditions = emptyList(),
                 ),
                 Barrier(
                     vector = pointOf(x = -2, y = -8) + pointOf(x = -6, y = -4),
-                    opened = true,
+                    opened = false,
+                    conditions = listOf(
+                        listOf(
+                            UUID(0, 1),
+                        ),
+                    ),
+                ),
+            )
+            val relays = listOf(
+                Relay(
+                    point = pointOf(3, -5),
+                    enabled = false,
+                    conditions = emptyList(),
                 ),
             )
             return Environment(
@@ -654,6 +708,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 camera = camera,
                 isCameraFree = false,
                 barriers = barriers,
+                relays = relays,
             )
         }
 
