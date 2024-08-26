@@ -17,6 +17,7 @@ import sp.kx.math.center
 import sp.kx.math.centerPoint
 import sp.kx.math.dby
 import sp.kx.math.distanceOf
+import sp.kx.math.getShortestPoint
 import sp.kx.math.isEmpty
 import sp.kx.math.measure.Measure
 import sp.kx.math.measure.MutableDeviation
@@ -36,6 +37,8 @@ import sp.kx.math.vectorOf
 import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
 import test.engine.logic.util.FontInfoUtil
+import test.engine.logic.util.closerThan
+import test.engine.logic.util.drawVectors
 import test.engine.logic.util.minus
 import test.engine.logic.util.plus
 import test.engine.logic.util.toVectors
@@ -81,14 +84,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                         when (measure.magnitude) {
                             16.0 -> measure.magnitude = 24.0
                             24.0 -> measure.magnitude = 32.0
-                        }
-                    }
-                }
-                KeyboardButton.M -> {
-                    if (!isPressed) {
-                        when (measure.magnitude) {
-                            24.0 -> measure.magnitude = 16.0
-                            32.0 -> measure.magnitude = 24.0
+                            32.0 -> measure.magnitude = 16.0
                         }
                     }
                 }
@@ -96,7 +92,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                     if (!isPressed) env.switchCamera()
                 }
                 else -> {
-                    println("[$TAG]: on button: $button $isPressed")
+                    println("[$TAG]: on button: $button $isPressed") // todo
                 }
             }
         }
@@ -164,7 +160,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 info = info,
                 pointTopLeft = pointOf(x = x + offset.dX + 0.25, y = textY),
                 measure = measure,
-                text = String.format("%2d", x),
+                text = String.format("%d", x),
             )
             val lineY = if (x % 2 == 0) 1.5 else 0.5
             canvas.vectors.draw(
@@ -184,7 +180,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 info = info,
                 pointTopLeft = pointOf(x = textX, y = y + offset.dY),
                 measure = measure,
-                text = String.format("%2d", y),
+                text = String.format("%d", y),
             )
             val lineX = if (y % 2 == 0) 0.5 else 1.5
             canvas.vectors.draw(
@@ -193,6 +189,51 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 lineWidth = 0.1,
                 measure = measure,
             )
+        }
+    }
+
+    private fun getCorrectedPoint(
+        minDistance: Double,
+        target: Point,
+        vector: Vector,
+    ): Point {
+        val point = vector.getShortestPoint(target = target)
+        val angle = angleOf(a = point, b = target)
+        return point.moved(length = minDistance, angle = angle)
+    }
+
+    private fun getFinalPoint(
+        player: Player,
+        minDistance: Double,
+        target: Point,
+        vectors: List<Vector>,
+    ): Point? {
+        val targetDistance = distanceOf(player.moving.point, target)
+        val nearest = vectors.filter { vector ->
+            vector.closerThan(point = player.moving.point, minDistance = targetDistance + minDistance)
+        }
+        val filtered = nearest.filter { vector ->
+            vector.closerThan(point = target, minDistance = minDistance)
+        }
+        if (filtered.isEmpty()) return target
+        val correctedPoints = nearest.map { vector ->
+            getCorrectedPoint(
+                minDistance = minDistance,
+                target = target,
+                vector = vector,
+            )
+        }
+        val allowedPoints = correctedPoints.filter { point ->
+            nearest.none { vector ->
+                vector.closerThan(point = point, minDistance = minDistance)
+            }
+        }
+        if (allowedPoints.isEmpty()) {
+            println("[$TAG]: No allowed point!") // todo
+            return null // todo
+        }
+        return allowedPoints.maxByOrNull {
+            distanceOf(player.moving.point, it)
         }
     }
 
@@ -215,7 +256,13 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             length = length * multiplier,
             angle = env.player.turning.direction.expected,
         )
-        env.player.moving.point.set(target)
+        val finalPoint = getFinalPoint(
+            player = env.player,
+            minDistance = 1.0,
+            target = target,
+            vectors = env.walls,
+        ) ?: return
+        env.player.moving.point.set(finalPoint)
     }
 
     private fun moveCamera() {
@@ -278,6 +325,23 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         offset: Offset,
         measure: Measure<Double, Double>,
     ) {
+        canvas.polygons.drawCircle(
+            borderColor = Color.BLUE,
+            fillColor = Color.BLUE.copy(alpha = 0.5f),
+            pointCenter = env.player.moving.point,
+            radius = 1.0,
+            edgeCount = 16,
+            lineWidth = 0.1,
+            offset = offset,
+            measure = measure,
+        )
+        canvas.vectors.draw(
+            color = Color.YELLOW,
+            vector = vectorOf(env.player.moving.point, length = 1.0, angle = env.player.turning.direction.expected),
+            offset = offset,
+            measure = measure,
+            lineWidth = 0.1,
+        )
         canvas.vectors.draw(
             color = Color.WHITE,
             vector = vectorOf(env.player.moving.point, length = 1.0, angle = env.player.turning.direction.actual),
@@ -342,11 +406,12 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         }
         val offset = centerPoint - point
         //
-        canvas.vectors.draw(
+        drawVectors(
             color = Color.GRAY,
             vectors = env.walls,
             offset = offset,
             measure = measure,
+            lineWidth = 0.1,
         )
         onRenderPlayer(
             canvas = canvas,
@@ -391,8 +456,10 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
 
         private fun getEnvironment(): Environment {
             val walls = listOf(
-                pointOf(x = 0, y = 0),
-                pointOf(x = 1, y = 1),
+                pointOf(x = 4, y = -4),
+                pointOf(x = 6, y = -2),
+                pointOf(x = 8, y = -2),
+                pointOf(x = 8, y = 2),
             ).toVectors()
             val player = Player(
                 moving = MutableMoving(
