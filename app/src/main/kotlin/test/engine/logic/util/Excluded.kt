@@ -156,6 +156,7 @@ internal fun Size.diagonalAngle(): Double {
     return angleOf(x = width, y = height)
 }
 
+@Deprecated("sp.kx.math.drawCircle")
 internal fun PolygonDrawer.drawCircle(
     color: Color,
     pointCenter: Point,
@@ -178,4 +179,12 @@ internal fun PolygonDrawer.drawCircle(
             GLUtil.vertexOf(it, offset = offset, measure = measure)
         }
     }
+}
+
+@Deprecated("sp.kx.math.plus")
+internal operator fun Offset.plus(other: Offset): Offset {
+    return offsetOf(
+        dX = dX + other.dX,
+        dY = dY + other.dY,
+    )
 }

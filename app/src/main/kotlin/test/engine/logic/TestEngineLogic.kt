@@ -18,8 +18,11 @@ import sp.kx.math.center
 import sp.kx.math.centerPoint
 import sp.kx.math.dby
 import sp.kx.math.distanceOf
+import sp.kx.math.getShortestDistance
 import sp.kx.math.getShortestPoint
+import sp.kx.math.gt
 import sp.kx.math.isEmpty
+import sp.kx.math.lt
 import sp.kx.math.measure.Measure
 import sp.kx.math.measure.MutableDeviation
 import sp.kx.math.measure.MutableDoubleMeasure
@@ -81,6 +84,23 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
 
     private val measure = MutableDoubleMeasure(24.0)
 
+    private fun onInteractionBarrier(barrier: Barrier) {
+        barrier.opened = !barrier.opened // todo
+    }
+
+    private fun onInteraction() {
+        val barrier = getNearest(
+            target = env.player.moving.point,
+            barriers = env.barriers,
+            minDistance = 1.0,
+            maxDistance = 2.0,
+        )
+        if (barrier != null) {
+            onInteractionBarrier(barrier = barrier)
+            return
+        }
+    }
+
     override val inputCallback = object : EngineInputCallback {
         override fun onKeyboardButton(button: KeyboardButton, isPressed: Boolean) {
             when (button) {
@@ -99,6 +119,9 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 }
                 KeyboardButton.C -> {
                     if (!isPressed) env.switchCamera()
+                }
+                KeyboardButton.F -> {
+                    if (!isPressed) onInteraction()
                 }
                 else -> {
                     println("[$TAG]: on button: $button $isPressed") // todo
@@ -261,11 +284,14 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             length = length * multiplier,
             angle = env.player.turning.direction.expected,
         )
+        val barriers = env.barriers.filter { barrier ->
+            !barrier.opened
+        }.map { it.vector }
         val finalPoint = getFinalPoint(
             player = env.player,
             minDistance = 1.0,
             target = target,
-            vectors = env.walls,
+            vectors = env.walls + barriers,
         ) ?: return
         env.player.moving.point.set(finalPoint)
     }
@@ -443,6 +469,58 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )
     }
 
+    private fun getNearest(
+        target: Point,
+        barriers: List<Barrier>,
+        minDistance: Double,
+        maxDistance: Double,
+    ): Barrier? {
+        var nearest: Pair<Barrier, Double>? = null
+        for (barrier in barriers) {
+            val distance = barrier.vector.getShortestDistance(target)
+            if (distance.lt(other = minDistance, points = 12)) continue
+            if (distance.gt(other = maxDistance, points = 12)) continue
+            if (nearest == null) {
+                nearest = barrier to distance
+            } else if (nearest.second > distance) {
+                nearest = barrier to distance
+            }
+        }
+        return nearest?.first
+    }
+
+    private fun onRenderInteraction(
+        canvas: Canvas,
+        offset: Offset,
+        measure: Measure<Double, Double>,
+    ) {
+        val point = getNearest(
+            target = env.player.moving.point,
+            barriers = env.barriers,
+            minDistance = 1.0,
+            maxDistance = 2.0,
+        )?.vector?.center() ?: return
+        val isPressed = engine.input.keyboard.isPressed(KeyboardButton.F)
+        canvas.polygons.drawRectangle(
+            borderColor = Color.GREEN,
+            fillColor = Color.GREEN.copy(alpha = if (isPressed) 0.5f else 0f),
+            pointTopLeft = point,
+            size = sizeOf(1.0, 1.0),
+            lineWidth = 0.1,
+            offset = offset + offsetOf(dX = 1.0, dY = -1.5),
+            measure = measure,
+        )
+        val info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure)
+        canvas.texts.draw(
+            color = Color.GREEN,
+            info = info,
+            pointTopLeft = point,
+            offset = offset + offsetOf(dX = 1.25, dY = -1.5),
+            measure = measure,
+            text = "F",
+        )
+    }
+
     override fun onRender(canvas: Canvas) {
         val fps = engine.property.time.frequency()
 //        canvas.texts.draw(
@@ -468,12 +546,6 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         }
         val offset = centerPoint - point
         //
-        onRenderWalls(
-            canvas = canvas,
-            walls = env.walls,
-            offset = offset,
-            measure = measure,
-        )
         onRenderPlayer(
             canvas = canvas,
             offset = if (env.isCameraFree()) {
@@ -483,6 +555,26 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             },
             measure = measure,
         )
+        onRenderWalls(
+            canvas = canvas,
+            walls = env.walls,
+            offset = offset,
+            measure = measure,
+        )
+        onRenderBarriers(
+            canvas = canvas,
+            barriers = env.barriers,
+            offset = offset,
+            measure = measure,
+        )
+        //
+        onRenderInteraction(
+            canvas = canvas,
+            offset = offset,
+            measure = measure,
+        )
+        // todo
+        //
         if (env.isCameraFree()) {
             onRenderCamera(
                 canvas = canvas,
@@ -490,13 +582,6 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 measure = measure,
             )
         }
-        onRenderBarriers(
-            canvas = canvas,
-            barriers = env.barriers,
-            offset = offset,
-            measure = measure,
-        )
-        // todo
         //
         onRenderGrid(
             canvas = canvas,
