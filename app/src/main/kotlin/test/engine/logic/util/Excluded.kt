@@ -188,3 +188,8 @@ internal operator fun Offset.plus(other: Offset): Offset {
         dY = dY + other.dY,
     )
 }
+
+@Deprecated(message = "sp.kx.math.draw")
+internal fun PolygonDrawer.drawPolygon() {
+    TODO("PolygonDrawer:drawPolygon")
+}

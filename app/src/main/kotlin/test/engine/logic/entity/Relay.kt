@@ -6,5 +6,5 @@ import java.util.UUID
 internal class Relay(
     val point: Point,
     var enabled: Boolean,
-    val conditions: List<UUID>,
+    val tags: Set<UUID>,
 )

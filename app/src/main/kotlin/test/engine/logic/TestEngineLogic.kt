@@ -42,6 +42,7 @@ import sp.kx.math.times
 import sp.kx.math.toOffset
 import sp.kx.math.vectorOf
 import test.engine.logic.entity.Barrier
+import test.engine.logic.entity.Condition
 import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
 import test.engine.logic.entity.Relay
@@ -70,6 +71,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         val player: Player,
         val camera: MutableMoving,
         private var isCameraFree: Boolean,
+        val conditions: List<Condition>,
         val barriers: List<Barrier>,
         val relays: List<Relay>,
     ) {
@@ -93,8 +95,36 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         barrier.opened = !barrier.opened // todo
     }
 
+    private fun isPassed(condition: Condition): Boolean {
+        return (condition.tags.isEmpty() || condition.tags.any { set ->
+            set.all { tag ->
+                env.relays.any { relay ->
+                    relay.tags.contains(tag) && relay.enabled
+                }
+            }
+        }) && (condition.depends.isEmpty() || condition.depends.any { set ->
+            set.all { id ->
+                isPassed(condition = env.conditions.firstOrNull { it.id == id } ?: TODO())
+            }
+        })
+    }
+
+    private fun onInteractionRelay(relay: Relay) {
+        relay.enabled = !relay.enabled
+        for (barrier in env.barriers) {
+            if (barrier.conditions.isEmpty()) continue
+            val passed = barrier.conditions.any { set ->
+                set.all { id ->
+                    val condition = env.conditions.firstOrNull { it.id == id } ?: TODO()
+                    isPassed(condition = condition)
+                }
+            }
+            barrier.opened = passed
+        }
+    }
+
     private fun onInteraction() {
-        val barrier = getNearest(
+        val barrier = getNearestBarrier(
             target = env.player.moving.point,
             barriers = env.barriers,
             minDistance = 1.0,
@@ -102,6 +132,16 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )
         if (barrier != null) {
             onInteractionBarrier(barrier = barrier)
+            return
+        }
+        val relay = getNearestRelay(
+            target = env.player.moving.point,
+            relays = env.relays,
+            minDistance = 1.0,
+            maxDistance = 2.0,
+        )
+        if (relay != null) {
+            onInteractionRelay(relay = relay)
             return
         }
     }
@@ -527,7 +567,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )
     }
 
-    private fun getNearest(
+    private fun getNearestBarrier(
         target: Point,
         barriers: List<Barrier>,
         minDistance: Double,
@@ -535,7 +575,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     ): Barrier? {
         var nearest: Pair<Barrier, Double>? = null
         for (barrier in barriers) {
-            if (barrier.conditions.isNotEmpty()) continue
+            if (barrier.conditions.isNotEmpty()) continue // todo
             val distance = barrier.vector.getShortestDistance(target)
             if (distance.lt(other = minDistance, points = 12)) continue
             if (distance.gt(other = maxDistance, points = 12)) continue
@@ -548,17 +588,42 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         return nearest?.first
     }
 
+    private fun getNearestRelay(
+        target: Point,
+        relays: List<Relay>,
+        minDistance: Double,
+        maxDistance: Double,
+    ): Relay? {
+        var nearest: Pair<Relay, Double>? = null
+        for (relay in relays) {
+            val distance = distanceOf(relay.point, target)
+            if (distance.lt(other = minDistance, points = 12)) continue
+            if (distance.gt(other = maxDistance, points = 12)) continue
+            if (nearest == null) {
+                nearest = relay to distance
+            } else if (nearest.second > distance) {
+                nearest = relay to distance
+            }
+        }
+        return nearest?.first
+    }
+
     private fun onRenderInteraction(
         canvas: Canvas,
         offset: Offset,
         measure: Measure<Double, Double>,
     ) {
-        val point = getNearest(
+        val point = getNearestBarrier(
             target = env.player.moving.point,
             barriers = env.barriers,
             minDistance = 1.0,
             maxDistance = 2.0,
-        )?.vector?.center() ?: return
+        )?.vector?.center() ?: getNearestRelay(
+            target = env.player.moving.point,
+            relays = env.relays,
+            minDistance = 1.0,
+            maxDistance = 2.0,
+        )?.point ?: return
         val isPressed = engine.input.keyboard.isPressed(KeyboardButton.F)
         canvas.polygons.drawRectangle(
             borderColor = Color.GREEN,
@@ -673,21 +738,46 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
 
         private fun getEnvironment(): Environment {
             val walls = listOf(
-                pointOf(x = 4, y = 2),
-                pointOf(x = 6, y = 0),
-                pointOf(x = 6, y = -6),
-                pointOf(x = 4, y = -8),
                 //
-                pointOf(x = -2, y = -8),
-                pointOf(x = -6, y = -12),
-                pointOf(x = -10, y = -8),
-                pointOf(x = -6, y = -4),
+                pointOf(-7, 1),
                 //
-                pointOf(x = -6, y = -2),
-                pointOf(x = -2, y = 2),
-                pointOf(x = -2, y = 6),
-                pointOf(x = 4, y = 6),
-                pointOf(x = 4, y = 2),
+                pointOf(-6, 2),
+                //
+                pointOf(-5, 2),
+                pointOf(-5, 2 + 4),
+                pointOf(-5 + 4, 2 + 4),
+                pointOf(-5 + 4, 2),
+                //
+                pointOf(1, 2),
+                pointOf(1, 2 + 4),
+                pointOf(1 + 4, 2 + 4),
+                pointOf(1 + 4, 2),
+                //
+                pointOf(6, 2),
+                //
+                pointOf(7, 1),
+                pointOf(10, 4),
+                pointOf(13, 1),
+                pointOf(10, -2),
+                //
+                pointOf(11, -3),
+                //
+                pointOf(11, -4),
+                pointOf(11 + 4, -4),
+                pointOf(11 + 4, -4 - 4),
+                pointOf(11, -4 - 4),
+                //
+                pointOf(11, -10),
+                pointOf(11 + 4, -10),
+                pointOf(11 + 4, -10 - 4),
+                pointOf(11, -10 - 4),
+                //
+                pointOf(11, -15),
+                //
+                pointOf(10, -16),
+                //
+                pointOf(-7, -16),
+                pointOf(-7, 1), // todo
             ).toVectors()
             val player = Player(
                 moving = MutableMoving(
@@ -703,27 +793,49 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 point = MutablePoint(x = 0.0, y = 0.0),
                 speed = MutableSpeed(magnitude = 8.0, timeUnit = TimeUnit.SECONDS),
             )
+            val conditions = listOf(
+                Condition(
+                    id = UUID(1, 1),
+                    depends = emptyList(),
+                    tags = listOf(
+                        setOf(UUID(0, 1)),
+                    ),
+                ),
+            )
             val barriers = listOf(
                 Barrier(
-                    vector = pointOf(x = -2, y = 2) + pointOf(x = 4, y = 2),
+                    vector = pointOf(x = -5, y = 2) + pointOf(x = -1, y = 2),
                     opened = false,
                     conditions = emptyList(),
                 ),
                 Barrier(
-                    vector = pointOf(x = -2, y = -8) + pointOf(x = -6, y = -4),
+                    vector = pointOf(x = 1, y = 2) + pointOf(x = 5, y = 2),
                     opened = false,
                     conditions = listOf(
-                        listOf(
-                            UUID(0, 1),
-                        ),
+                        setOf(UUID(1, 1)),
                     ),
+                ),
+                Barrier(
+                    vector = pointOf(x = 7, y = 1) + pointOf(x = 10, y = -2),
+                    opened = false,
+                    conditions = emptyList(),
+                ),
+                Barrier(
+                    vector = pointOf(x = 11, y = -4) + pointOf(x = 11, y = -8),
+                    opened = false,
+                    conditions = emptyList(),
+                ),
+                Barrier(
+                    vector = pointOf(x = 11, y = -10) + pointOf(x = 11, y = -14),
+                    opened = false,
+                    conditions = emptyList(),
                 ),
             )
             val relays = listOf(
                 Relay(
-                    point = pointOf(3, -5),
+                    point = pointOf(-3, 5),
                     enabled = false,
-                    conditions = emptyList(),
+                    tags = setOf(UUID(0, 1)),
                 ),
             )
             return Environment(
@@ -731,6 +843,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 player = player,
                 camera = camera,
                 isCameraFree = false,
+                conditions = conditions,
                 barriers = barriers,
                 relays = relays,
             )
