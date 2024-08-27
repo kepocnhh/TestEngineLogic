@@ -770,13 +770,30 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 pointOf(11, -15),
                 //
                 pointOf(10, -16),
+                pointOf(13, -19),
+                pointOf(10, -22),
+                pointOf(7, -19),
                 //
-                pointOf(-7, -16),
+                pointOf(6, -20),
+                //
+                pointOf(5, -20),
+                pointOf(5, -20 - 4),
+                pointOf(5 - 4, -20 - 4),
+                pointOf(5 - 4, -20),
+                //a
+                pointOf(-1, -20),
+                pointOf(-1, -20 - 4),
+                pointOf(-1 - 4, -20 - 4),
+                pointOf(-1 - 4, -20),
+                //
+                pointOf(-6, -20),
+                //
+                pointOf(-7, -19),
                 pointOf(-7, 1), // todo
             ).toVectors()
             val player = Player(
                 moving = MutableMoving(
-                    point = MutablePoint(x = 0.0, y = 0.0),
+                    point = MutablePoint(x = 0.0, y = -8.0),
                     speed = MutableSpeed(magnitude = 8.0, timeUnit = TimeUnit.SECONDS),
                 ),
                 turning = MutableTurning(
@@ -786,7 +803,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             )
             val camera = MutableMoving(
                 point = MutablePoint(x = 0.0, y = 0.0),
-                speed = MutableSpeed(magnitude = 8.0, timeUnit = TimeUnit.SECONDS),
+                speed = MutableSpeed(magnitude = 12.0, timeUnit = TimeUnit.SECONDS),
             )
             val conditions = listOf(
                 Condition(
