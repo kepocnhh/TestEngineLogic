@@ -239,27 +239,50 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         return point.moved(length = minDistance, angle = angle)
     }
 
+    private fun getCorrectedPoint(
+        minDistance: Double,
+        target: Point,
+        point: Point,
+    ): Point {
+        val angle = angleOf(a = point, b = target)
+        return point.moved(length = minDistance, angle = angle)
+    }
+
     private fun getFinalPoint(
         player: Player,
         minDistance: Double,
         target: Point,
         vectors: List<Vector>,
+        points: List<Point>,
     ): Point? {
         val targetDistance = distanceOf(player.moving.point, target)
+        // player   target   vector   min
+        // |        |        |        |
+        // *--------*--------*--------*
         val nearest = vectors.filter { vector ->
             vector.closerThan(point = player.moving.point, minDistance = targetDistance + minDistance)
         }
         val anyCloser = nearest.closerThan(point = target, minDistance = minDistance)
-        if (!anyCloser) return target
+        val conflictPoints = points.filter { point ->
+            distanceOf(point, target).lt(other = minDistance, points = 12)
+        }
+        if (!anyCloser && conflictPoints.isEmpty()) return target
         val correctedPoints = nearest.map { vector ->
             getCorrectedPoint(
                 minDistance = minDistance,
                 target = target,
                 vector = vector,
             )
+        } + conflictPoints.map { point ->
+            getCorrectedPoint(
+                minDistance = minDistance,
+                target = target,
+                point = point,
+            )
         }
         val allowedPoints = correctedPoints.filter { point ->
-            !nearest.closerThan(point = point, minDistance = minDistance)
+            !nearest.closerThan(point = point, minDistance = minDistance) &&
+                points.none { distanceOf(it, point).lt(other = minDistance, points = 12) }
         }
         if (allowedPoints.isEmpty()) {
             println("[$TAG]: No allowed point!") // todo
@@ -297,6 +320,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             minDistance = 1.0,
             target = target,
             vectors = env.walls + barriers,
+            points = env.relays.map { it.point },
         ) ?: return
         env.player.moving.point.set(finalPoint)
     }
