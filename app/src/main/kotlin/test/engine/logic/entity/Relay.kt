@@ -5,6 +5,6 @@ import java.util.UUID
 
 internal class Relay(
     val point: Point,
-    var enabled: Boolean,
-    val tags: Set<UUID>,
-)
+    override var enabled: Boolean,
+    override val tags: Set<UUID>,
+) : TagsHolder

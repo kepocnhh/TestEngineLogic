@@ -1,16 +1,12 @@
 package test.engine.logic
 
-import sp.kx.lwjgl.engine.Engine
 import sp.kx.lwjgl.entity.input.KeyboardButton
 import test.engine.logic.entity.Barrier
 import test.engine.logic.entity.Crate
 import test.engine.logic.entity.Item
 import test.engine.logic.entity.Relay
 
-internal class Interactions(
-    private val engine: Engine,
-    private val env: Environment,
-) {
+internal class Interactions(private val env: Environment) {
     private fun onInteractionBarrier(barrier: Barrier) {
         barrier.opened = !barrier.opened // todo
     }
@@ -22,7 +18,7 @@ internal class Interactions(
             barrier.opened = barrier.conditions.any { set ->
                 set.all { id ->
                     val condition = env.conditions.firstOrNull { it.id == id } ?: TODO()
-                    TestEngineLogic.isPassed(condition = condition, env = env)
+                    Entities.isPassed(condition = condition, holders = env.relays, conditions = env.conditions)
                 }
             }
         }
@@ -42,7 +38,7 @@ internal class Interactions(
     }
 
     private fun onInteraction() {
-        val barrier = TestEngineLogic.getNearestBarrier(
+        val barrier = Entities.getNearestBarrier(
             target = env.player.moving.point,
             barriers = env.barriers,
             minDistance = 1.0,
@@ -52,7 +48,7 @@ internal class Interactions(
             onInteractionBarrier(barrier = barrier)
             return
         }
-        val relay = TestEngineLogic.getNearestRelay(
+        val relay = Entities.getNearestRelay(
             target = env.player.moving.point,
             relays = env.relays,
             maxDistance = 1.75,
@@ -61,7 +57,7 @@ internal class Interactions(
             onInteractionRelay(relay = relay)
             return
         }
-        val item = TestEngineLogic.getNearestItem(
+        val item = Entities.getNearestItem(
             target = env.player.moving.point,
             items = env.items,
             maxDistance = 1.75,
@@ -70,7 +66,7 @@ internal class Interactions(
             onInteractionItem(item = item)
             return
         }
-        val crate = TestEngineLogic.getNearestCrate(
+        val crate = Entities.getNearestCrate(
             target = env.player.moving.point,
             crates = env.crates,
             maxDistance = 1.75,

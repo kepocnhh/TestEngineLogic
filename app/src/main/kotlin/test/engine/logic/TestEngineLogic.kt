@@ -52,6 +52,7 @@ import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
 import test.engine.logic.entity.Player
 import test.engine.logic.entity.Relay
+import test.engine.logic.entity.TagsHolder
 import test.engine.logic.util.FontInfoUtil
 import test.engine.logic.util.closerThan
 import test.engine.logic.util.diagonal
@@ -68,10 +69,7 @@ import kotlin.math.absoluteValue
 
 internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     private val env = getEnvironment()
-    private val interactions = Interactions(
-        engine = engine,
-        env = env,
-    )
+    private val interactions = Interactions(env = env)
 
     private lateinit var shouldEngineStopUnit: Unit
 
@@ -498,20 +496,20 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         offset: Offset,
         measure: Measure<Double, Double>,
     ) {
-        val point = getNearestBarrier(
+        val point = Entities.getNearestBarrier(
             target = env.player.moving.point,
             barriers = env.barriers,
             minDistance = 1.0,
             maxDistance = 1.75,
-        )?.vector?.center() ?: getNearestRelay(
+        )?.vector?.center() ?: Entities.getNearestRelay(
             target = env.player.moving.point,
             relays = env.relays,
             maxDistance = 1.75,
-        )?.point ?: getNearestItem(
+        )?.point ?: Entities.getNearestItem(
             target = env.player.moving.point,
             items = env.items,
             maxDistance = 1.75,
-        )?.point ?: getNearestCrate(
+        )?.point ?: Entities.getNearestCrate(
             target = env.player.moving.point,
             crates = env.crates,
             maxDistance = 1.75,
@@ -1007,92 +1005,6 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 result.dX = 1.0
             }
             return result
-        }
-
-        fun getNearestRelay(
-            target: Point,
-            relays: List<Relay>,
-            maxDistance: Double,
-        ): Relay? {
-            var nearest: Pair<Relay, Double>? = null
-            for (relay in relays) {
-                val distance = distanceOf(relay.point, target)
-                if (distance.gt(other = maxDistance, points = 12)) continue
-                if (nearest == null) {
-                    nearest = relay to distance
-                } else if (nearest.second > distance) {
-                    nearest = relay to distance
-                }
-            }
-            return nearest?.first
-        }
-
-        fun getNearestItem(
-            target: Point,
-            items: List<Item>,
-            maxDistance: Double,
-        ): Item? {
-            var nearest: Pair<Item, Double>? = null
-            for (item in items) {
-                if (item.owner != null) continue
-                val distance = distanceOf(item.point, target)
-                if (distance.gt(other = maxDistance, points = 12)) continue
-                if (nearest == null || nearest.second > distance) {
-                    nearest = item to distance
-                }
-            }
-            return nearest?.first
-        }
-
-        fun getNearestCrate(
-            target: Point,
-            crates: List<Crate>,
-            maxDistance: Double,
-        ): Crate? {
-            var nearest: Pair<Crate, Double>? = null
-            for (crate in crates) {
-                val distance = distanceOf(crate.point, target)
-                if (distance.gt(other = maxDistance, points = 12)) continue
-                if (nearest == null || nearest.second > distance) {
-                    nearest = crate to distance
-                }
-            }
-            return nearest?.first
-        }
-
-        fun getNearestBarrier(
-            target: Point,
-            barriers: List<Barrier>,
-            minDistance: Double,
-            maxDistance: Double,
-        ): Barrier? {
-            var nearest: Pair<Barrier, Double>? = null
-            for (barrier in barriers) {
-                if (barrier.conditions.isNotEmpty()) continue // todo
-                val distance = barrier.vector.getShortestDistance(target)
-                if (distance.lt(other = minDistance, points = 12)) continue
-                if (distance.gt(other = maxDistance, points = 12)) continue
-                if (nearest == null) {
-                    nearest = barrier to distance
-                } else if (nearest.second > distance) {
-                    nearest = barrier to distance
-                }
-            }
-            return nearest?.first
-        }
-
-        fun isPassed(condition: Condition, env: Environment): Boolean {
-            return (condition.tags.isEmpty() || condition.tags.any { set ->
-                set.all { tag ->
-                    env.relays.any { relay ->
-                        relay.tags.contains(tag) && relay.enabled
-                    }
-                }
-            }) && (condition.depends.isEmpty() || condition.depends.any { set ->
-                set.all { id ->
-                    isPassed(condition = env.conditions.firstOrNull { it.id == id } ?: TODO(), env = env)
-                }
-            })
         }
     }
 }
