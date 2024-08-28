@@ -4,7 +4,10 @@ import sp.kx.lwjgl.entity.input.KeyboardButton
 import test.engine.logic.entity.Barrier
 import test.engine.logic.entity.Crate
 import test.engine.logic.entity.Item
+import test.engine.logic.entity.Lock
+import test.engine.logic.entity.Player
 import test.engine.logic.entity.Relay
+import java.util.UUID
 
 internal class Interactions(private val env: Environment) {
     private fun onInteractionBarrier(barrier: Barrier) {
@@ -28,7 +31,22 @@ internal class Interactions(private val env: Environment) {
         item.owner = env.player.id
     }
 
+    private fun open(lock: Lock, items: List<Item>) {
+        lock.opened = lock.required.any { tags ->
+            tags.all { tag ->
+                items.any { item ->
+                    item.tags.contains(tag)
+                }
+            }
+        }
+    }
+
     private fun onInteractionCrate(crate: Crate) {
+        if (!crate.lock.opened) {
+            val items = env.items.filter { it.owner == env.player.id }
+            open(lock = crate.lock, items = items)
+        }
+        if (!crate.lock.opened) return
         env.state = Environment.State.Swap(
             index = 0,
             side = true,

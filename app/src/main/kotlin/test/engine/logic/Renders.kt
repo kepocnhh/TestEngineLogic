@@ -195,10 +195,19 @@ internal class Renders(
         val size = sizeOf(1.0, 1.0)
         val info = FontInfoUtil.getFontInfo(height = 0.75, measure = measure)
         for (index in crates.indices) {
-            val item = crates[index]
+            val crate = crates[index]
+            if (!crate.lock.opened) {
+                canvas.vectors.draw(
+                    color = Color.RED,
+                    vector = (crate.point + size.center()) + (crate.point + size.center() * -1.0),
+                    offset = offset,
+                    measure = measure,
+                    lineWidth = 0.1,
+                )
+            }
             canvas.polygons.drawRectangle(
                 color = Color.YELLOW,
-                pointTopLeft = item.point,
+                pointTopLeft = crate.point,
                 size = size,
                 offset = offset + size.center() * -1.0,
                 measure = measure,
@@ -209,7 +218,7 @@ internal class Renders(
             canvas.texts.draw(
                 color = Color.YELLOW,
                 info = info,
-                pointTopLeft = item.point,
+                pointTopLeft = crate.point,
                 offset = offset + offsetOf(dX = measure.units(textWidth) / 2, dY = measure.units(info.height.toDouble()) / 2) * -1.0,
                 measure = measure,
                 text = text,

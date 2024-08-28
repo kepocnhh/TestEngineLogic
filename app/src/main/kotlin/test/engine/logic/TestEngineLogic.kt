@@ -29,6 +29,7 @@ import test.engine.logic.entity.Barrier
 import test.engine.logic.entity.Condition
 import test.engine.logic.entity.Crate
 import test.engine.logic.entity.Item
+import test.engine.logic.entity.Lock
 import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
 import test.engine.logic.entity.Player
@@ -352,7 +353,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             val items = listOf(
                 Item(
                     id = UUID(0x0000100000000000, 1),
-                    tags = emptySet(), // todo
+                    tags = setOf(UUID(1_200_001, 1)),
                     point = MutablePoint(0.0, 0.0),
                     owner = null,
                 ),
@@ -367,10 +368,20 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Crate(
                     id = UUID(0x0000200000000000, 1),
                     point = pointOf(-2, -8),
+                    lock = Lock(
+                        opened = true,
+                        required = emptyList(),
+                    ),
                 ),
                 Crate(
                     id = UUID(0x0001200000000000, 1),
                     point = pointOf(-2, -12),
+                    lock = Lock(
+                        opened = false,
+                        required = listOf(
+                            setOf(UUID(1_200_001, 1)),
+                        ),
+                    ),
                 ),
             )
             return Environment(
