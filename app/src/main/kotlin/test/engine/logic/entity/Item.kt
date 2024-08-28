@@ -7,5 +7,5 @@ internal class Item(
     val id: UUID,
     val tags: Set<UUID>,
     val point: MutablePoint,
-    var ownerID: UUID?,
+    var owner: UUID?,
 )

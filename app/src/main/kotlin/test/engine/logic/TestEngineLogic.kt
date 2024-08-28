@@ -16,6 +16,7 @@ import sp.kx.math.angle
 import sp.kx.math.angleOf
 import sp.kx.math.center
 import sp.kx.math.centerPoint
+import sp.kx.math.copy
 import sp.kx.math.dby
 import sp.kx.math.distanceOf
 import sp.kx.math.getShortestDistance
@@ -69,6 +70,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     )
 
     private class Environment(
+        var state: State,
         val walls: List<Vector>,
         val player: Player,
         val camera: MutableMoving,
@@ -78,6 +80,11 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         val relays: List<Relay>,
         val items: List<Item>,
     ) {
+        sealed interface State {
+            data object Walking : State
+            class Inventory(var index: Int) : State
+        }
+
         fun isCameraFree(): Boolean {
             return isCameraFree
         }
@@ -126,7 +133,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     }
 
     private fun onInteractionItem(item: Item) {
-        item.ownerID = env.player.id
+        item.owner = env.player.id
     }
 
     private fun onInteraction() {
@@ -160,32 +167,64 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         }
     }
 
-    override val inputCallback = object : EngineInputCallback {
-        override fun onKeyboardButton(button: KeyboardButton, isPressed: Boolean) {
-            when (button) {
-                KeyboardButton.ESCAPE -> {
-                    if (!isPressed) shouldEngineStopUnit = Unit
-                }
-                KeyboardButton.P -> {
-                    if (!isPressed) {
-                        when (measure.magnitude) {
-                            16.0 -> measure.magnitude = 24.0
-                            24.0 -> measure.magnitude = 32.0
-                            32.0 -> measure.magnitude = 40.0
-                            40.0 -> measure.magnitude = 16.0
-                        }
-                    }
-                }
-                KeyboardButton.C -> {
-                    if (!isPressed) env.switchCamera()
-                }
-                KeyboardButton.F -> {
-                    if (!isPressed) onInteraction()
-                }
-                else -> {
-                    println("[$TAG]: on button: $button $isPressed") // todo
+    private fun onPressInventory(state: Environment.State.Inventory, button: KeyboardButton) {
+        when (button) {
+            KeyboardButton.TAB, KeyboardButton.ESCAPE -> {
+                env.state = Environment.State.Walking
+            }
+            else -> {/*noop*/}
+        }
+        val items = env.items.filter { it.owner == env.player.id }
+        if (items.isEmpty()) return
+        when (button) {
+            KeyboardButton.W -> {
+                state.index = (items.size + state.index - 1) % items.size
+            }
+            KeyboardButton.S, KeyboardButton.DOWN -> {
+                state.index = (state.index + 1) % items.size
+            }
+            KeyboardButton.X -> {
+                val item = items[state.index]
+                item.point.set(env.player.moving.point)
+                item.owner = null
+                if (state.index == items.lastIndex) {
+                    state.index = (items.size + state.index - 1) % items.size
                 }
             }
+            else -> {/*noop*/}
+        }
+    }
+
+    private fun onPressWalking(button: KeyboardButton) {
+        when (button) {
+            KeyboardButton.ESCAPE -> shouldEngineStopUnit = Unit
+            KeyboardButton.P -> {
+                when (measure.magnitude) {
+                    16.0 -> measure.magnitude = 24.0
+                    24.0 -> measure.magnitude = 32.0
+                    32.0 -> measure.magnitude = 40.0
+                    40.0 -> measure.magnitude = 16.0
+                }
+            }
+            KeyboardButton.C -> env.switchCamera()
+            KeyboardButton.F -> onInteraction()
+            KeyboardButton.TAB -> {
+                env.state = Environment.State.Inventory(index = 0)
+            }
+            else -> {/*noop*/}
+        }
+    }
+
+    private fun onPress(button: KeyboardButton) {
+        when (val state = env.state) {
+            is Environment.State.Inventory -> onPressInventory(state = state, button = button)
+            Environment.State.Walking -> onPressWalking(button = button)
+        }
+    }
+
+    override val inputCallback = object : EngineInputCallback {
+        override fun onKeyboardButton(button: KeyboardButton, isPressed: Boolean) {
+            if (isPressed) onPress(button)
         }
     }
 
@@ -627,7 +666,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     ): Item? {
         var nearest: Pair<Item, Double>? = null
         for (item in items) {
-            if (item.ownerID != null) continue
+            if (item.owner != null) continue
             val distance = distanceOf(item.point, target)
             if (distance.gt(other = maxDistance, points = 12)) continue
             if (nearest == null || nearest.second > distance) {
@@ -687,7 +726,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         val info = FontInfoUtil.getFontInfo(height = 0.75, measure = measure)
         for (index in items.indices) {
             val item = items[index]
-            if (item.ownerID != null) continue
+            if (item.owner != null) continue
             canvas.polygons.drawRectangle(
                 color = Color.GREEN,
                 pointTopLeft = item.point,
@@ -708,6 +747,47 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         }
     }
 
+    private fun onRenderInventory(
+        canvas: Canvas,
+        state: Environment.State.Inventory,
+        measure: Measure<Double, Double>,
+    ) {
+        canvas.polygons.drawRectangle(
+            borderColor = Color.GREEN,
+            fillColor = Color.BLACK.copy(alpha = 0.75f),
+            pointTopLeft = Point.Center + offsetOf(2, 2),
+            size = sizeOf(8, 8),
+            lineWidth = 0.1,
+            measure = measure,
+        )
+        val info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure)
+        val items = env.items.filter { it.owner == env.player.id }
+        if (items.isEmpty()) {
+            canvas.texts.draw(
+                info = info,
+                pointTopLeft = Point.Center + offsetOf(2, 2) + offsetOf(0.75, 0.5),
+                measure = measure,
+                color = Color.GREEN.copy(alpha = 0.5f),
+                text = "no items",
+            )
+            return
+        }
+        for (index in items.indices) {
+            val item = items[index]
+            val isSelected = state.index == index
+            val color = if (isSelected) Color.YELLOW else Color.GREEN
+            val text = "#${env.items.indexOf(item)} ${item.id.toString().substring(0, 4)}"
+            val prefix = if (isSelected) "> " else "  "
+            canvas.texts.draw(
+                info = info,
+                pointTopLeft = Point.Center + offsetOf(2, 2) + offsetOf(0.75, 0.5) + Offset.Empty.copy(dY = index * measure.units(info.height.toDouble())),
+                measure = measure,
+                color = color,
+                text = prefix + text, // todo
+            )
+        }
+    }
+
     override fun onRender(canvas: Canvas) {
         val fps = engine.property.time.frequency()
 //        canvas.texts.draw(
@@ -718,9 +798,9 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
 //            measure = measure,
 //        )
         //
-        movePlayer() // todo
-        if (env.isCameraFree()) {
-            moveCamera()
+        if (env.state == Environment.State.Walking) {
+            movePlayer()
+            if (env.isCameraFree()) moveCamera()
         }
         //
         val pictureSize = engine.property.pictureSize - measure
@@ -767,11 +847,22 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             measure = measure,
         )
         //
-        onRenderInteraction(
-            canvas = canvas,
-            offset = offset,
-            measure = measure,
-        )
+        when (val state = env.state) {
+            is Environment.State.Inventory -> {
+                onRenderInventory(
+                    canvas = canvas,
+                    state = state,
+                    measure = measure,
+                )
+            }
+            Environment.State.Walking -> {
+                onRenderInteraction(
+                    canvas = canvas,
+                    offset = offset,
+                    measure = measure,
+                )
+            }
+        }
         // todo
         //
         if (env.isCameraFree()) {
@@ -782,14 +873,13 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             )
         }
         //
-        onRenderGrid(
-            canvas = canvas,
-            offset = offset,
-            measure = measure,
-            point = point,
-        )
-        //
         if (engine.input.keyboard.isPressed(KeyboardButton.I)) {
+            onRenderGrid(
+                canvas = canvas,
+                offset = offset,
+                measure = measure,
+                point = point,
+            )
             onRenderDebug(
                 canvas = canvas,
                 offset = offset,
@@ -956,13 +1046,20 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             )
             val items = listOf(
                 Item(
-                    id = UUID(101, 1),
+                    id = UUID(0x0000100000000000, 1),
                     tags = emptySet(), // todo
                     point = MutablePoint(0.0, 0.0),
-                    ownerID = null,
+                    owner = null,
+                ),
+                Item(
+                    id = UUID(0x0001100000000000, 1),
+                    tags = emptySet(), // todo
+                    point = MutablePoint(0.0, -4.0),
+                    owner = null,
                 ),
             )
             return Environment(
+                state = Environment.State.Walking,
                 walls = walls,
                 player = player,
                 camera = camera,
