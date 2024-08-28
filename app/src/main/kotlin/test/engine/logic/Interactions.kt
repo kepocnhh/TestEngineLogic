@@ -101,7 +101,7 @@ internal class Interactions(private val env: Environment) {
             KeyboardButton.W -> {
                 state.index = (items.size + state.index - 1) % items.size
             }
-            KeyboardButton.S, KeyboardButton.DOWN -> {
+            KeyboardButton.S -> {
                 state.index = (state.index + 1) % items.size
             }
             KeyboardButton.X -> {
@@ -120,6 +120,32 @@ internal class Interactions(private val env: Environment) {
         when (button) {
             KeyboardButton.ESCAPE -> {
                 env.state = Environment.State.Walking
+            }
+            else -> {/*noop*/}
+        }
+        val owner = if (state.side) state.src else state.dst
+        val items = env.items.filter { it.owner == owner }
+        if (items.isNotEmpty()) when (button) {
+            KeyboardButton.W -> {
+                state.index = (items.size + state.index - 1) % items.size
+            }
+            KeyboardButton.S -> {
+                state.index = (state.index + 1) % items.size
+            }
+            KeyboardButton.F -> {
+                val item = items[state.index]
+                item.point.set(env.player.moving.point)
+                item.owner = if (state.side) state.dst else state.src
+                if (state.index == items.lastIndex) {
+                    state.index = (items.size + state.index - 1) % items.size
+                }
+            }
+            else -> {/*noop*/}
+        }
+        when (button) {
+            KeyboardButton.A, KeyboardButton.D -> {
+                state.index = 0
+                state.side = !state.side
             }
             else -> {/*noop*/}
         }

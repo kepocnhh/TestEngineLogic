@@ -267,6 +267,7 @@ internal class Renders(
         items: List<Item>,
         info: FontInfo,
         selected: Int?,
+        title: String,
         offset: Offset,
         measure: Measure<Double, Double>,
     ) {
@@ -278,6 +279,15 @@ internal class Renders(
             lineWidth = 0.1,
             measure = measure,
         )
+        if (title.isNotBlank()) {
+            canvas.texts.draw(
+                info = info,
+                pointTopLeft = Point.Center + offset + offsetOf(1, -1),
+                measure = measure,
+                color = if (selected == null) Color.GREEN else Color.YELLOW,
+                text = title,
+            )
+        }
         if (items.isEmpty()) {
             canvas.texts.draw(
                 info = info,
@@ -315,6 +325,7 @@ internal class Renders(
             items = env.items.filter { it.owner == env.player.id },
             info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure),
             selected = state.index,
+            title = "",
             offset = offsetOf(2, 2),
             measure = measure,
         )
@@ -332,6 +343,7 @@ internal class Renders(
             items = env.items.filter { it.owner == state.src },
             info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure),
             selected = state.index.takeIf { state.side },
+            title = "",
             offset = offsetOf(2, 2),
             measure = measure,
         )
@@ -341,6 +353,7 @@ internal class Renders(
             items = env.items.filter { it.owner == state.dst },
             info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure),
             selected = state.index.takeIf { !state.side },
+            title = state.dst.toString().substring(0, 4),
             offset = offsetOf(2.0 + size.width + 2.0, 2.0),
             measure = measure,
         )
