@@ -43,6 +43,7 @@ import sp.kx.math.toOffset
 import sp.kx.math.vectorOf
 import test.engine.logic.entity.Barrier
 import test.engine.logic.entity.Condition
+import test.engine.logic.entity.Item
 import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
 import test.engine.logic.entity.Relay
@@ -62,6 +63,7 @@ import kotlin.math.absoluteValue
 
 internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     private class Player(
+        val id: UUID,
         val moving: MutableMoving,
         val turning: MutableTurning,
     )
@@ -74,6 +76,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         val conditions: List<Condition>,
         val barriers: List<Barrier>,
         val relays: List<Relay>,
+        val items: List<Item>,
     ) {
         fun isCameraFree(): Boolean {
             return isCameraFree
@@ -122,6 +125,10 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         }
     }
 
+    private fun onInteractionItem(item: Item) {
+        item.ownerID = env.player.id
+    }
+
     private fun onInteraction() {
         val barrier = getNearestBarrier(
             target = env.player.moving.point,
@@ -140,6 +147,15 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )
         if (relay != null) {
             onInteractionRelay(relay = relay)
+            return
+        }
+        val item = getNearestItem(
+            target = env.player.moving.point,
+            items = env.items,
+            maxDistance = 1.75,
+        )
+        if (item != null) {
+            onInteractionItem(item = item)
             return
         }
     }
@@ -604,6 +620,23 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         return nearest?.first
     }
 
+    private fun getNearestItem(
+        target: Point,
+        items: List<Item>,
+        maxDistance: Double,
+    ): Item? {
+        var nearest: Pair<Item, Double>? = null
+        for (item in items) {
+            if (item.ownerID != null) continue
+            val distance = distanceOf(item.point, target)
+            if (distance.gt(other = maxDistance, points = 12)) continue
+            if (nearest == null || nearest.second > distance) {
+                nearest = item to distance
+            }
+        }
+        return nearest?.first
+    }
+
     private fun onRenderInteraction(
         canvas: Canvas,
         offset: Offset,
@@ -617,6 +650,10 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )?.vector?.center() ?: getNearestRelay(
             target = env.player.moving.point,
             relays = env.relays,
+            maxDistance = 1.75,
+        )?.point ?: getNearestItem(
+            target = env.player.moving.point,
+            items = env.items,
             maxDistance = 1.75,
         )?.point ?: return
         val isPressed = engine.input.keyboard.isPressed(KeyboardButton.F)
@@ -638,6 +675,37 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             measure = measure,
             text = "F",
         )
+    }
+
+    private fun onRenderItems(
+        canvas: Canvas,
+        items: List<Item>,
+        offset: Offset,
+        measure: Measure<Double, Double>,
+    ) {
+        val size = sizeOf(1.0, 0.75)
+        val info = FontInfoUtil.getFontInfo(height = 0.75, measure = measure)
+        for (index in items.indices) {
+            val item = items[index]
+            if (item.ownerID != null) continue
+            canvas.polygons.drawRectangle(
+                color = Color.GREEN,
+                pointTopLeft = item.point,
+                size = size,
+                offset = offset + size.center() * -1.0,
+                measure = measure,
+            )
+            val text = "i#${index % 10}"
+            val textWidth = engine.fontAgent.getTextWidth(info, text)
+            canvas.texts.draw(
+                color = Color.BLACK,
+                info = info,
+                pointTopLeft = item.point,
+                offset = offset + offsetOf(dX = measure.units(textWidth) / 2, dY = measure.units(info.height.toDouble()) / 2) * -1.0,
+                measure = measure,
+                text = text,
+            )
+        }
     }
 
     override fun onRender(canvas: Canvas) {
@@ -689,6 +757,12 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         onRenderRelays(
             canvas = canvas,
             relays = env.relays,
+            offset = offset,
+            measure = measure,
+        )
+        onRenderItems(
+            canvas = canvas,
+            items = env.items,
             offset = offset,
             measure = measure,
         )
@@ -792,6 +866,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 pointOf(-7, 1), // todo
             ).toVectors()
             val player = Player(
+                id = UUID(1_000_001, 1),
                 moving = MutableMoving(
                     point = MutablePoint(x = 0.0, y = -8.0),
                     speed = MutableSpeed(magnitude = 8.0, timeUnit = TimeUnit.SECONDS),
@@ -879,6 +954,14 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                     tags = setOf(UUID(0, 3)),
                 ),
             )
+            val items = listOf(
+                Item(
+                    id = UUID(101, 1),
+                    tags = emptySet(), // todo
+                    point = MutablePoint(0.0, 0.0),
+                    ownerID = null,
+                ),
+            )
             return Environment(
                 walls = walls,
                 player = player,
@@ -887,6 +970,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 conditions = conditions,
                 barriers = barriers,
                 relays = relays,
+                items = items,
             )
         }
 
