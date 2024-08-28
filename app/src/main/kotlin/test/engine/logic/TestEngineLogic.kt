@@ -6,11 +6,13 @@ import sp.kx.lwjgl.engine.EngineLogic
 import sp.kx.lwjgl.engine.input.Keyboard
 import sp.kx.lwjgl.entity.Canvas
 import sp.kx.lwjgl.entity.Color
+import sp.kx.lwjgl.entity.font.FontInfo
 import sp.kx.lwjgl.entity.input.KeyboardButton
 import sp.kx.math.MutableOffset
 import sp.kx.math.MutablePoint
 import sp.kx.math.Offset
 import sp.kx.math.Point
+import sp.kx.math.Size
 import sp.kx.math.Vector
 import sp.kx.math.angle
 import sp.kx.math.angleOf
@@ -44,9 +46,11 @@ import sp.kx.math.toOffset
 import sp.kx.math.vectorOf
 import test.engine.logic.entity.Barrier
 import test.engine.logic.entity.Condition
+import test.engine.logic.entity.Crate
 import test.engine.logic.entity.Item
 import test.engine.logic.entity.MutableMoving
 import test.engine.logic.entity.MutableTurning
+import test.engine.logic.entity.Player
 import test.engine.logic.entity.Relay
 import test.engine.logic.util.FontInfoUtil
 import test.engine.logic.util.closerThan
@@ -63,168 +67,37 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
 
 internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
-    private class Player(
-        val id: UUID,
-        val moving: MutableMoving,
-        val turning: MutableTurning,
-    )
-
-    private class Environment(
-        var state: State,
-        val walls: List<Vector>,
-        val player: Player,
-        val camera: MutableMoving,
-        private var isCameraFree: Boolean,
-        val conditions: List<Condition>,
-        val barriers: List<Barrier>,
-        val relays: List<Relay>,
-        val items: List<Item>,
-    ) {
-        sealed interface State {
-            data object Walking : State
-            class Inventory(var index: Int) : State
-        }
-
-        fun isCameraFree(): Boolean {
-            return isCameraFree
-        }
-
-        fun switchCamera() {
-            camera.point.set(player.moving.point)
-            isCameraFree = !isCameraFree
-        }
-    }
-
     private val env = getEnvironment()
+    private val interactions = Interactions(
+        engine = engine,
+        env = env,
+    )
 
     private lateinit var shouldEngineStopUnit: Unit
 
     private val measure = MutableDoubleMeasure(24.0)
 
-    private fun onInteractionBarrier(barrier: Barrier) {
-        barrier.opened = !barrier.opened // todo
-    }
-
-    private fun isPassed(condition: Condition): Boolean {
-        return (condition.tags.isEmpty() || condition.tags.any { set ->
-            set.all { tag ->
-                env.relays.any { relay ->
-                    relay.tags.contains(tag) && relay.enabled
-                }
-            }
-        }) && (condition.depends.isEmpty() || condition.depends.any { set ->
-            set.all { id ->
-                isPassed(condition = env.conditions.firstOrNull { it.id == id } ?: TODO())
-            }
-        })
-    }
-
-    private fun onInteractionRelay(relay: Relay) {
-        relay.enabled = !relay.enabled
-        for (barrier in env.barriers) {
-            if (barrier.conditions.isEmpty()) continue
-            barrier.opened = barrier.conditions.any { set ->
-                set.all { id ->
-                    val condition = env.conditions.firstOrNull { it.id == id } ?: TODO()
-                    isPassed(condition = condition)
-                }
-            }
-        }
-    }
-
-    private fun onInteractionItem(item: Item) {
-        item.owner = env.player.id
-    }
-
-    private fun onInteraction() {
-        val barrier = getNearestBarrier(
-            target = env.player.moving.point,
-            barriers = env.barriers,
-            minDistance = 1.0,
-            maxDistance = 1.75,
-        )
-        if (barrier != null) {
-            onInteractionBarrier(barrier = barrier)
-            return
-        }
-        val relay = getNearestRelay(
-            target = env.player.moving.point,
-            relays = env.relays,
-            maxDistance = 1.75,
-        )
-        if (relay != null) {
-            onInteractionRelay(relay = relay)
-            return
-        }
-        val item = getNearestItem(
-            target = env.player.moving.point,
-            items = env.items,
-            maxDistance = 1.75,
-        )
-        if (item != null) {
-            onInteractionItem(item = item)
-            return
-        }
-    }
-
-    private fun onPressInventory(state: Environment.State.Inventory, button: KeyboardButton) {
-        when (button) {
-            KeyboardButton.TAB, KeyboardButton.ESCAPE -> {
-                env.state = Environment.State.Walking
-            }
-            else -> {/*noop*/}
-        }
-        val items = env.items.filter { it.owner == env.player.id }
-        if (items.isEmpty()) return
-        when (button) {
-            KeyboardButton.W -> {
-                state.index = (items.size + state.index - 1) % items.size
-            }
-            KeyboardButton.S, KeyboardButton.DOWN -> {
-                state.index = (state.index + 1) % items.size
-            }
-            KeyboardButton.X -> {
-                val item = items[state.index]
-                item.point.set(env.player.moving.point)
-                item.owner = null
-                if (state.index == items.lastIndex) {
-                    state.index = (items.size + state.index - 1) % items.size
-                }
-            }
-            else -> {/*noop*/}
-        }
-    }
-
-    private fun onPressWalking(button: KeyboardButton) {
-        when (button) {
-            KeyboardButton.ESCAPE -> shouldEngineStopUnit = Unit
-            KeyboardButton.P -> {
-                when (measure.magnitude) {
-                    16.0 -> measure.magnitude = 24.0
-                    24.0 -> measure.magnitude = 32.0
-                    32.0 -> measure.magnitude = 40.0
-                    40.0 -> measure.magnitude = 16.0
-                }
-            }
-            KeyboardButton.C -> env.switchCamera()
-            KeyboardButton.F -> onInteraction()
-            KeyboardButton.TAB -> {
-                env.state = Environment.State.Inventory(index = 0)
-            }
-            else -> {/*noop*/}
-        }
-    }
-
-    private fun onPress(button: KeyboardButton) {
-        when (val state = env.state) {
-            is Environment.State.Inventory -> onPressInventory(state = state, button = button)
-            Environment.State.Walking -> onPressWalking(button = button)
-        }
-    }
-
     override val inputCallback = object : EngineInputCallback {
         override fun onKeyboardButton(button: KeyboardButton, isPressed: Boolean) {
-            if (isPressed) onPress(button)
+            when (button) {
+                KeyboardButton.P -> {
+                    if (isPressed) when (measure.magnitude) {
+                        16.0 -> measure.magnitude = 24.0
+                        24.0 -> measure.magnitude = 32.0
+                        32.0 -> measure.magnitude = 40.0
+                        40.0 -> measure.magnitude = 16.0
+                    }
+                    return
+                }
+                KeyboardButton.ESCAPE -> {
+                    if (env.state == Environment.State.Walking) {
+                        if (isPressed) shouldEngineStopUnit = Unit
+                        return
+                    }
+                }
+                else -> Unit
+            }
+            if (isPressed) interactions.onPress(button)
         }
     }
 
@@ -413,7 +286,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             minDistance = 1.0,
             target = target,
             vectors = env.walls + barriers,
-            points = env.relays.map { it.point },
+            points = env.relays.map { it.point } + env.crates.map { it.point },
         ) ?: return
         env.player.moving.point.set(finalPoint)
     }
@@ -620,62 +493,6 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )
     }
 
-    private fun getNearestBarrier(
-        target: Point,
-        barriers: List<Barrier>,
-        minDistance: Double,
-        maxDistance: Double,
-    ): Barrier? {
-        var nearest: Pair<Barrier, Double>? = null
-        for (barrier in barriers) {
-            if (barrier.conditions.isNotEmpty()) continue // todo
-            val distance = barrier.vector.getShortestDistance(target)
-            if (distance.lt(other = minDistance, points = 12)) continue
-            if (distance.gt(other = maxDistance, points = 12)) continue
-            if (nearest == null) {
-                nearest = barrier to distance
-            } else if (nearest.second > distance) {
-                nearest = barrier to distance
-            }
-        }
-        return nearest?.first
-    }
-
-    private fun getNearestRelay(
-        target: Point,
-        relays: List<Relay>,
-        maxDistance: Double,
-    ): Relay? {
-        var nearest: Pair<Relay, Double>? = null
-        for (relay in relays) {
-            val distance = distanceOf(relay.point, target)
-            if (distance.gt(other = maxDistance, points = 12)) continue
-            if (nearest == null) {
-                nearest = relay to distance
-            } else if (nearest.second > distance) {
-                nearest = relay to distance
-            }
-        }
-        return nearest?.first
-    }
-
-    private fun getNearestItem(
-        target: Point,
-        items: List<Item>,
-        maxDistance: Double,
-    ): Item? {
-        var nearest: Pair<Item, Double>? = null
-        for (item in items) {
-            if (item.owner != null) continue
-            val distance = distanceOf(item.point, target)
-            if (distance.gt(other = maxDistance, points = 12)) continue
-            if (nearest == null || nearest.second > distance) {
-                nearest = item to distance
-            }
-        }
-        return nearest?.first
-    }
-
     private fun onRenderInteraction(
         canvas: Canvas,
         offset: Offset,
@@ -693,6 +510,10 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         )?.point ?: getNearestItem(
             target = env.player.moving.point,
             items = env.items,
+            maxDistance = 1.75,
+        )?.point ?: getNearestCrate(
+            target = env.player.moving.point,
+            crates = env.crates,
             maxDistance = 1.75,
         )?.point ?: return
         val isPressed = engine.input.keyboard.isPressed(KeyboardButton.F)
@@ -734,7 +555,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 offset = offset + size.center() * -1.0,
                 measure = measure,
             )
-            val text = "i#${index % 10}"
+            val text = "i${index % 10}"
             val textWidth = engine.fontAgent.getTextWidth(info, text)
             canvas.texts.draw(
                 color = Color.BLACK,
@@ -747,25 +568,57 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         }
     }
 
-    private fun onRenderInventory(
+    private fun onRenderCrates(
         canvas: Canvas,
-        state: Environment.State.Inventory,
+        crates: List<Crate>,
+        offset: Offset,
         measure: Measure<Double, Double>,
+    ) {
+        val size = sizeOf(1.0, 1.0)
+        val info = FontInfoUtil.getFontInfo(height = 0.75, measure = measure)
+        for (index in crates.indices) {
+            val item = crates[index]
+            canvas.polygons.drawRectangle(
+                color = Color.YELLOW,
+                pointTopLeft = item.point,
+                size = size,
+                offset = offset + size.center() * -1.0,
+                measure = measure,
+                lineWidth = 0.1,
+            )
+            val text = "c${index % 10}"
+            val textWidth = engine.fontAgent.getTextWidth(info, text)
+            canvas.texts.draw(
+                color = Color.YELLOW,
+                info = info,
+                pointTopLeft = item.point,
+                offset = offset + offsetOf(dX = measure.units(textWidth) / 2, dY = measure.units(info.height.toDouble()) / 2) * -1.0,
+                measure = measure,
+                text = text,
+            )
+        }
+    }
+
+    private fun onRenderItems(
+        canvas: Canvas,
+        size: Size,
+        items: List<Item>,
+        info: FontInfo,
+        selected: Int?,
+        offset: Offset,
     ) {
         canvas.polygons.drawRectangle(
             borderColor = Color.GREEN,
             fillColor = Color.BLACK.copy(alpha = 0.75f),
-            pointTopLeft = Point.Center + offsetOf(2, 2),
-            size = sizeOf(8, 8),
+            pointTopLeft = Point.Center + offset,
+            size = size,
             lineWidth = 0.1,
             measure = measure,
         )
-        val info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure)
-        val items = env.items.filter { it.owner == env.player.id }
         if (items.isEmpty()) {
             canvas.texts.draw(
                 info = info,
-                pointTopLeft = Point.Center + offsetOf(2, 2) + offsetOf(0.75, 0.5),
+                pointTopLeft = Point.Center + offset + offsetOf(0.75, 0.5),
                 measure = measure,
                 color = Color.GREEN.copy(alpha = 0.5f),
                 text = "no items",
@@ -774,18 +627,57 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         }
         for (index in items.indices) {
             val item = items[index]
-            val isSelected = state.index == index
+            val isSelected = selected == index
             val color = if (isSelected) Color.YELLOW else Color.GREEN
             val text = "#${env.items.indexOf(item)} ${item.id.toString().substring(0, 4)}"
             val prefix = if (isSelected) "> " else "  "
             canvas.texts.draw(
                 info = info,
-                pointTopLeft = Point.Center + offsetOf(2, 2) + offsetOf(0.75, 0.5) + Offset.Empty.copy(dY = index * measure.units(info.height.toDouble())),
+                pointTopLeft = Point.Center + offset + offsetOf(0.75, 0.5) + Offset.Empty.copy(dY = index * measure.units(info.height.toDouble())),
                 measure = measure,
                 color = color,
                 text = prefix + text, // todo
             )
         }
+    }
+
+    private fun onRenderInventory(
+        canvas: Canvas,
+        state: Environment.State.Inventory,
+        measure: Measure<Double, Double>,
+    ) {
+        onRenderItems(
+            canvas = canvas,
+            size = sizeOf(8, 8),
+            items = env.items.filter { it.owner == env.player.id },
+            info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure),
+            selected = state.index,
+            offset = offsetOf(2, 2),
+        )
+    }
+
+    private fun onRenderSwap(
+        canvas: Canvas,
+        state: Environment.State.Swap,
+        measure: Measure<Double, Double>,
+    ) {
+        val size = sizeOf(8, 8)
+        onRenderItems(
+            canvas = canvas,
+            size = size,
+            items = env.items.filter { it.owner == state.src },
+            info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure),
+            selected = state.index.takeIf { state.side },
+            offset = offsetOf(2, 2),
+        )
+        onRenderItems(
+            canvas = canvas,
+            size = size,
+            items = env.items.filter { it.owner == state.dst },
+            info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure),
+            selected = state.index.takeIf { !state.side },
+            offset = offsetOf(2.0 + size.width + 2.0, 2.0),
+        )
     }
 
     override fun onRender(canvas: Canvas) {
@@ -846,15 +738,15 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             offset = offset,
             measure = measure,
         )
+        onRenderCrates(
+            canvas = canvas,
+            crates = env.crates,
+            offset = offset,
+            measure = measure,
+        )
+        // todo
         //
         when (val state = env.state) {
-            is Environment.State.Inventory -> {
-                onRenderInventory(
-                    canvas = canvas,
-                    state = state,
-                    measure = measure,
-                )
-            }
             Environment.State.Walking -> {
                 onRenderInteraction(
                     canvas = canvas,
@@ -862,8 +754,21 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                     measure = measure,
                 )
             }
+            is Environment.State.Inventory -> {
+                onRenderInventory(
+                    canvas = canvas,
+                    state = state,
+                    measure = measure,
+                )
+            }
+            is Environment.State.Swap -> {
+                onRenderSwap(
+                    canvas = canvas,
+                    state = state,
+                    measure = measure,
+                )
+            }
         }
-        // todo
         //
         if (env.isCameraFree()) {
             onRenderCamera(
@@ -1058,6 +963,16 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                     owner = null,
                 ),
             )
+            val crates = listOf(
+                Crate(
+                    id = UUID(0x0000200000000000, 1),
+                    point = pointOf(-2, -8),
+                ),
+                Crate(
+                    id = UUID(0x0001200000000000, 1),
+                    point = pointOf(-2, -12),
+                ),
+            )
             return Environment(
                 state = Environment.State.Walking,
                 walls = walls,
@@ -1068,6 +983,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 barriers = barriers,
                 relays = relays,
                 items = items,
+                crates = crates,
             )
         }
 
@@ -1091,6 +1007,92 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 result.dX = 1.0
             }
             return result
+        }
+
+        fun getNearestRelay(
+            target: Point,
+            relays: List<Relay>,
+            maxDistance: Double,
+        ): Relay? {
+            var nearest: Pair<Relay, Double>? = null
+            for (relay in relays) {
+                val distance = distanceOf(relay.point, target)
+                if (distance.gt(other = maxDistance, points = 12)) continue
+                if (nearest == null) {
+                    nearest = relay to distance
+                } else if (nearest.second > distance) {
+                    nearest = relay to distance
+                }
+            }
+            return nearest?.first
+        }
+
+        fun getNearestItem(
+            target: Point,
+            items: List<Item>,
+            maxDistance: Double,
+        ): Item? {
+            var nearest: Pair<Item, Double>? = null
+            for (item in items) {
+                if (item.owner != null) continue
+                val distance = distanceOf(item.point, target)
+                if (distance.gt(other = maxDistance, points = 12)) continue
+                if (nearest == null || nearest.second > distance) {
+                    nearest = item to distance
+                }
+            }
+            return nearest?.first
+        }
+
+        fun getNearestCrate(
+            target: Point,
+            crates: List<Crate>,
+            maxDistance: Double,
+        ): Crate? {
+            var nearest: Pair<Crate, Double>? = null
+            for (crate in crates) {
+                val distance = distanceOf(crate.point, target)
+                if (distance.gt(other = maxDistance, points = 12)) continue
+                if (nearest == null || nearest.second > distance) {
+                    nearest = crate to distance
+                }
+            }
+            return nearest?.first
+        }
+
+        fun getNearestBarrier(
+            target: Point,
+            barriers: List<Barrier>,
+            minDistance: Double,
+            maxDistance: Double,
+        ): Barrier? {
+            var nearest: Pair<Barrier, Double>? = null
+            for (barrier in barriers) {
+                if (barrier.conditions.isNotEmpty()) continue // todo
+                val distance = barrier.vector.getShortestDistance(target)
+                if (distance.lt(other = minDistance, points = 12)) continue
+                if (distance.gt(other = maxDistance, points = 12)) continue
+                if (nearest == null) {
+                    nearest = barrier to distance
+                } else if (nearest.second > distance) {
+                    nearest = barrier to distance
+                }
+            }
+            return nearest?.first
+        }
+
+        fun isPassed(condition: Condition, env: Environment): Boolean {
+            return (condition.tags.isEmpty() || condition.tags.any { set ->
+                set.all { tag ->
+                    env.relays.any { relay ->
+                        relay.tags.contains(tag) && relay.enabled
+                    }
+                }
+            }) && (condition.depends.isEmpty() || condition.depends.any { set ->
+                set.all { id ->
+                    isPassed(condition = env.conditions.firstOrNull { it.id == id } ?: TODO(), env = env)
+                }
+            })
         }
     }
 }
