@@ -59,6 +59,14 @@ internal operator fun Size.div(value: Double): Size {
     )
 }
 
+@Deprecated(message = "sp.kx.math.times")
+internal operator fun Size.times(value: Double): Size {
+    return sizeOf(
+        width = width * value,
+        height = height * value,
+    )
+}
+
 @Deprecated(message = "sp.kx.math.minus")
 internal operator fun Point.minus(measure: Measure<Double, Double>): Point {
     return pointOf(
@@ -192,4 +200,12 @@ internal operator fun Offset.plus(other: Offset): Offset {
 @Deprecated(message = "sp.kx.math.draw")
 internal fun PolygonDrawer.drawPolygon() {
     TODO("PolygonDrawer:drawPolygon")
+}
+
+@Deprecated(message = "sp.kx.math.copy")
+internal fun Size.copy(width: Double = this.width, height: Double = this.height): Size {
+    return sizeOf(
+        width = width,
+        height = height,
+    )
 }

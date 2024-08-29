@@ -10,14 +10,10 @@ import test.engine.logic.entity.Relay
 import java.util.UUID
 
 internal class Interactions(private val env: Environment) {
-    private fun onInteractionBarrier(barrier: Barrier) {
-        barrier.opened = !barrier.opened // todo
-    }
-
-    private fun isOpened(lock: Lock, items: Iterable<Item>): Boolean {
-        if (lock.required == null) return true
-        return lock.required.any { tags ->
-            tags.all { tag ->
+    private fun isOpened(tags: List<Set<UUID>>?, items: Iterable<Item>): Boolean {
+        if (tags == null) return true
+        return tags.any { set ->
+            set.all { tag ->
                 items.any { item ->
                     item.tags.contains(tag)
                 }
@@ -28,8 +24,8 @@ internal class Interactions(private val env: Environment) {
     private fun isOpened(lock: Lock?): Boolean {
         if (lock == null) return true
         if (lock.opened == true) return true
-        val opened = isOpened(
-            lock = lock,
+        val opened = lock.conditions == null && isOpened(
+            tags = lock.required,
             items = env.items.filter { it.owner == env.player.id },
         )
         if (lock.opened == false) {
@@ -38,13 +34,19 @@ internal class Interactions(private val env: Environment) {
         return opened
     }
 
+    private fun onInteractionBarrier(barrier: Barrier) {
+        if (!isOpened(lock = barrier.lock)) return
+        barrier.opened = !barrier.opened
+    }
+
     private fun onInteractionRelay(relay: Relay) {
         if (!isOpened(lock = relay.lock)) return
         relay.enabled = !relay.enabled
         for (barrier in env.barriers) {
-            if (barrier.conditions == null) continue
+            if (barrier.lock == null) continue
+            if (barrier.lock.conditions == null) continue
             barrier.opened = Entities.deepPassed(
-                depends = barrier.conditions,
+                depends = barrier.lock.conditions,
                 holders = env.relays,
                 conditions = env.conditions,
             )

@@ -28,11 +28,13 @@ import test.engine.logic.entity.Crate
 import test.engine.logic.entity.Item
 import test.engine.logic.entity.Relay
 import test.engine.logic.util.FontInfoUtil
+import test.engine.logic.util.copy
 import test.engine.logic.util.diagonal
 import test.engine.logic.util.diagonalAngle
 import test.engine.logic.util.drawRectangle
 import test.engine.logic.util.minus
 import test.engine.logic.util.plus
+import test.engine.logic.util.times
 
 internal class Renders(
     private val engine: Engine,
@@ -133,24 +135,68 @@ internal class Renders(
         relays: List<Relay>,
     ) {
         val size = sizeOf(2, 1)
-        val info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure)
+//        val info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure)
+        val dHeight = size.height * 0.75
+        val d = size.height - dHeight
+        val dSize = sizeOf(width = dHeight, height = dHeight)
         for (relay in relays) {
+            val color = if (relay.enabled) Color.GREEN else Color.RED
             canvas.polygons.drawRectangle(
-                color = if (relay.enabled) Color.GREEN else Color.RED,
+                color = color,
+//                borderColor = color,
+//                fillColor = color.copy(alpha = 0.5f),
                 pointTopLeft = relay.point,
                 size = size,
                 offset = offset + size.center() * -1.0,
                 measure = measure,
+//                lineWidth = d / 2,
             )
-            val text = if (relay.enabled) "on" else "off"
-            val textWidth = engine.fontAgent.getTextWidth(info, text)
-            canvas.texts.draw(
+            when (val lock = relay.lock) {
+                null -> Unit
+                else -> when (lock.opened) {
+                    true -> Unit
+                    else -> {
+                        val start = relay.point + offsetOf(dX = size.width / 2, dY = - size.height / 2)
+                        val finish = relay.point + offsetOf(dX = size.width / 2, dY = size.height / 2)
+                        val vector = start + finish
+//                        canvas.vectors.draw(
+//                            color = Color.YELLOW,
+//                            vector = vector,
+//                            lineWidth = 0.1,
+//                            offset = offset,
+//                            measure = measure,
+//                        )
+                    }
+                }
+            }
+//            val text = if (relay.enabled) "on" else "off"
+//            val textWidth = engine.fontAgent.getTextWidth(info, text)
+//            canvas.texts.draw(
+//                color = Color.BLACK,
+//                info = info,
+//                pointTopLeft = relay.point,
+//                offset = offset + offsetOf(dX = measure.units(textWidth) / 2, dY = size.height / 2) * -1.0,
+//                measure = measure,
+//                text = text,
+//            )
+            val dX = if (relay.enabled) {
+                size.width / 2 - d / 2 - dSize.width
+            } else {
+                d / 2 - size.width / 2
+            }
+//            canvas.polygons.drawRectangle(
+//                color = Color.BLACK.copy(alpha = 0.5f),
+//                pointTopLeft = relay.point + offsetOf(dX = d / 2 - size.width / 2, dY = - dSize.height / 2),
+//                size = sizeOf(width = size.width - d, height = dHeight),
+//                offset = offset,
+//                measure = measure,
+//            )
+            canvas.polygons.drawRectangle(
                 color = Color.BLACK,
-                info = info,
-                pointTopLeft = relay.point,
-                offset = offset + offsetOf(dX = measure.units(textWidth) / 2, dY = size.height / 2) * -1.0,
+                pointTopLeft = relay.point + offsetOf(dX = dX, dY = - dSize.height / 2),
+                size = dSize,
+                offset = offset,
                 measure = measure,
-                text = text,
             )
         }
     }

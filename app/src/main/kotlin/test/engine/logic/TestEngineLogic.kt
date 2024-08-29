@@ -304,34 +304,41 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Barrier(
                     vector = pointOf(x = -5, y = 2) + pointOf(x = -1, y = 2),
                     opened = false,
-                    conditions = null,
+                    lock = null,
                 ),
                 Barrier(
                     vector = pointOf(x = 1, y = 2) + pointOf(x = 5, y = 2),
                     opened = false,
-                    conditions = listOf(
-                        setOf(UUID(1, 1)),
+                    lock = Lock(
+                        opened = null,
+                        required = null,
+                        conditions = listOf(
+                            setOf(UUID(1, 1)),
+                        ),
                     ),
                 ),
                 Barrier(
                     vector = pointOf(x = 7, y = 1) + pointOf(x = 10, y = -2),
                     opened = false,
-                    conditions = listOf(
-                        setOf(UUID(1, 2)),
+                    lock = Lock(
+                        opened = null,
+                        required = null,
+                        conditions = listOf(
+                            setOf(UUID(1, 2)),
+                        ),
                     ),
                 ),
                 Barrier(
                     vector = pointOf(x = 11, y = -4) + pointOf(x = 11, y = -8),
                     opened = false,
-                    conditions = listOf(
-                        setOf(UUID(1, 3)),
+                    lock = Lock(
+                        opened = null,
+                        required = null,
+                        conditions = listOf(
+                            setOf(UUID(1, 3)),
+                        ),
                     ),
                 ),
-//                Barrier(
-//                    vector = pointOf(x = 11, y = -10) + pointOf(x = 11, y = -14),
-//                    opened = false,
-//                    conditions = emptyList(),
-//                ),
             )
             val relays = listOf(
                 Relay(
@@ -343,6 +350,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                         required = listOf(
                             setOf(UUID(1_001_001, 1)),
                         ),
+                        conditions = null,
                     ),
                 ),
                 Relay(
@@ -354,6 +362,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                         required = listOf(
                             setOf(UUID(1_002_001, 1)),
                         ),
+                        conditions = null,
                     ),
                 ),
                 Relay(
@@ -397,6 +406,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                         required = listOf(
                             setOf(UUID(1_001_001, 1)),
                         ),
+                        conditions = null,
                     ),
                 ),
                 Crate(
@@ -407,6 +417,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                         required = listOf(
                             setOf(UUID(1_002_001, 1)),
                         ),
+                        conditions = null,
                     ),
                 ),
             )
