@@ -41,12 +41,25 @@ internal class Interactions(private val env: Environment) {
         }
     }
 
-    private fun onInteractionCrate(crate: Crate) {
-        if (!crate.lock.opened) {
-            val items = env.items.filter { it.owner == env.player.id }
-            open(lock = crate.lock, items = items)
+    private fun isOpened(crate: Crate): Boolean {
+        if (crate.lock == null) return true
+        if (crate.lock.opened == true) return true
+        val items = env.items.filter { it.owner == env.player.id }
+        val opened = crate.lock.required.any { tags ->
+            tags.all { tag ->
+                items.any { item ->
+                    item.tags.contains(tag)
+                }
+            }
         }
-        if (!crate.lock.opened) return
+        if (crate.lock.opened == false) {
+            crate.lock.opened = opened
+        }
+        return opened
+    }
+
+    private fun onInteractionCrate(crate: Crate) {
+        if (!isOpened(crate = crate)) return
         env.state = Environment.State.Swap(
             index = 0,
             side = true,

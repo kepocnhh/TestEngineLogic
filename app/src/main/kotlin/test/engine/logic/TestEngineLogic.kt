@@ -353,14 +353,20 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             val items = listOf(
                 Item(
                     id = UUID(0x0000100000000000, 1),
-                    tags = setOf(UUID(1_200_001, 1)),
+                    tags = emptySet(),
                     point = MutablePoint(0.0, 0.0),
                     owner = null,
                 ),
                 Item(
                     id = UUID(0x0001100000000000, 1),
-                    tags = emptySet(), // todo
+                    tags = setOf(UUID(1_001_001, 1)),
                     point = MutablePoint(0.0, -4.0),
+                    owner = null,
+                ),
+                Item(
+                    id = UUID(0x0002100000000000, 1),
+                    tags = setOf(UUID(1_002_001, 1)),
+                    point = MutablePoint(4.0, -4.0),
                     owner = null,
                 ),
             )
@@ -368,10 +374,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Crate(
                     id = UUID(0x0000200000000000, 1),
                     point = pointOf(-2, -8),
-                    lock = Lock(
-                        opened = true,
-                        required = emptyList(),
-                    ),
+                    lock = null,
                 ),
                 Crate(
                     id = UUID(0x0001200000000000, 1),
@@ -379,7 +382,17 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                     lock = Lock(
                         opened = false,
                         required = listOf(
-                            setOf(UUID(1_200_001, 1)),
+                            setOf(UUID(1_001_001, 1)),
+                        ),
+                    ),
+                ),
+                Crate(
+                    id = UUID(0x0002200000000000, 1),
+                    point = pointOf(4, -12),
+                    lock = Lock(
+                        opened = null,
+                        required = listOf(
+                            setOf(UUID(1_002_001, 1)),
                         ),
                     ),
                 ),
