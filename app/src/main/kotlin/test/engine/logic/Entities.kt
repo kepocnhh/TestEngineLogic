@@ -85,14 +85,20 @@ internal object Entities {
         return nearest?.first
     }
 
-    fun isPassed(condition: Condition, holders: List<TagsHolder>, conditions: List<Condition>): Boolean {
-        return (condition.tags.isEmpty() || condition.tags.any { set ->
+    private fun isPassed(condition: Condition, holders: List<TagsHolder>): Boolean {
+        if (condition.tags == null) return true
+        return condition.tags.any { set ->
             set.all { tag ->
                 holders.any { holder ->
                     holder.tags.contains(tag) && holder.enabled
                 }
             }
-        }) && (condition.depends.isEmpty() || condition.depends.any { set ->
+        }
+    }
+
+    private fun deepPassed(condition: Condition, holders: List<TagsHolder>, conditions: List<Condition>): Boolean {
+        if (condition.depends == null) return true
+        return condition.depends.any { set ->
             set.all { id ->
                 isPassed(
                     condition = conditions.firstOrNull { it.id == id } ?: TODO(),
@@ -100,6 +106,11 @@ internal object Entities {
                     conditions = conditions,
                 )
             }
-        })
+        }
+    }
+
+    fun isPassed(condition: Condition, holders: List<TagsHolder>, conditions: List<Condition>): Boolean {
+        return isPassed(condition = condition, holders = holders) &&
+            deepPassed(condition = condition, holders = holders, conditions = conditions)
     }
 }

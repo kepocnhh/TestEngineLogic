@@ -279,21 +279,21 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             val conditions = listOf(
                 Condition(
                     id = UUID(1, 1),
-                    depends = emptyList(),
+                    depends = null,
                     tags = listOf(
                         setOf(UUID(0, 1)),
                     ),
                 ),
                 Condition(
                     id = UUID(1, 2),
-                    depends = emptyList(),
+                    depends = null,
                     tags = listOf(
                         setOf(UUID(0, 1), UUID(0, 2)),
                     ),
                 ),
                 Condition(
                     id = UUID(1, 3),
-                    depends = emptyList(),
+                    depends = null,
                     tags = listOf(
                         setOf(UUID(0, 1), UUID(0, 3)),
                         setOf(UUID(0, 2), UUID(0, 3)),
