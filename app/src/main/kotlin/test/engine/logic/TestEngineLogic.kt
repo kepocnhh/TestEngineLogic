@@ -304,7 +304,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Barrier(
                     vector = pointOf(x = -5, y = 2) + pointOf(x = -1, y = 2),
                     opened = false,
-                    conditions = emptyList(),
+                    conditions = null,
                 ),
                 Barrier(
                     vector = pointOf(x = 1, y = 2) + pointOf(x = 5, y = 2),
@@ -338,16 +338,29 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                     point = pointOf(-3, 5),
                     enabled = false,
                     tags = setOf(UUID(0, 1)),
+                    lock = Lock(
+                        opened = false,
+                        required = listOf(
+                            setOf(UUID(1_001_001, 1)),
+                        ),
+                    ),
                 ),
                 Relay(
                     point = pointOf(3, 5),
                     enabled = false,
                     tags = setOf(UUID(0, 2)),
+                    lock = Lock(
+                        opened = null,
+                        required = listOf(
+                            setOf(UUID(1_002_001, 1)),
+                        ),
+                    ),
                 ),
                 Relay(
                     point = pointOf(10, 2),
                     enabled = false,
                     tags = setOf(UUID(0, 3)),
+                    lock = null,
                 ),
             )
             val items = listOf(

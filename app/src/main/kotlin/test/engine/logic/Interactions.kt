@@ -14,16 +14,40 @@ internal class Interactions(private val env: Environment) {
         barrier.opened = !barrier.opened // todo
     }
 
-    private fun onInteractionRelay(relay: Relay) {
-        relay.enabled = !relay.enabled
-        for (barrier in env.barriers) {
-            if (barrier.conditions.isEmpty()) continue
-            barrier.opened = barrier.conditions.any { set ->
-                set.all { id ->
-                    val condition = env.conditions.firstOrNull { it.id == id } ?: TODO()
-                    Entities.isPassed(condition = condition, holders = env.relays, conditions = env.conditions)
+    private fun isOpened(lock: Lock, items: Iterable<Item>): Boolean {
+        if (lock.required == null) return true
+        return lock.required.any { tags ->
+            tags.all { tag ->
+                items.any { item ->
+                    item.tags.contains(tag)
                 }
             }
+        }
+    }
+
+    private fun isOpened(lock: Lock?): Boolean {
+        if (lock == null) return true
+        if (lock.opened == true) return true
+        val opened = isOpened(
+            lock = lock,
+            items = env.items.filter { it.owner == env.player.id },
+        )
+        if (lock.opened == false) {
+            lock.opened = opened
+        }
+        return opened
+    }
+
+    private fun onInteractionRelay(relay: Relay) {
+        if (!isOpened(lock = relay.lock)) return
+        relay.enabled = !relay.enabled
+        for (barrier in env.barriers) {
+            if (barrier.conditions == null) continue
+            barrier.opened = Entities.deepPassed(
+                depends = barrier.conditions,
+                holders = env.relays,
+                conditions = env.conditions,
+            )
         }
     }
 
@@ -31,35 +55,8 @@ internal class Interactions(private val env: Environment) {
         item.owner = env.player.id
     }
 
-    private fun open(lock: Lock, items: List<Item>) {
-        lock.opened = lock.required.any { tags ->
-            tags.all { tag ->
-                items.any { item ->
-                    item.tags.contains(tag)
-                }
-            }
-        }
-    }
-
-    private fun isOpened(crate: Crate): Boolean {
-        if (crate.lock == null) return true
-        if (crate.lock.opened == true) return true
-        val items = env.items.filter { it.owner == env.player.id }
-        val opened = crate.lock.required.any { tags ->
-            tags.all { tag ->
-                items.any { item ->
-                    item.tags.contains(tag)
-                }
-            }
-        }
-        if (crate.lock.opened == false) {
-            crate.lock.opened = opened
-        }
-        return opened
-    }
-
     private fun onInteractionCrate(crate: Crate) {
-        if (!isOpened(crate = crate)) return
+        if (!isOpened(lock = crate.lock)) return
         env.state = Environment.State.Swap(
             index = 0,
             side = true,

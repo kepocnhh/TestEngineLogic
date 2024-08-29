@@ -11,6 +11,7 @@ import test.engine.logic.entity.Crate
 import test.engine.logic.entity.Item
 import test.engine.logic.entity.Relay
 import test.engine.logic.entity.TagsHolder
+import java.util.UUID
 
 internal object Entities {
     fun getNearestRelay(
@@ -72,13 +73,11 @@ internal object Entities {
     ): Barrier? {
         var nearest: Pair<Barrier, Double>? = null
         for (barrier in barriers) {
-            if (barrier.conditions.isNotEmpty()) continue // todo
+            if (barrier.conditions != null) continue
             val distance = barrier.vector.getShortestDistance(target)
             if (distance.lt(other = minDistance, points = 12)) continue
             if (distance.gt(other = maxDistance, points = 12)) continue
-            if (nearest == null) {
-                nearest = barrier to distance
-            } else if (nearest.second > distance) {
+            if (nearest == null || nearest.second > distance) {
                 nearest = barrier to distance
             }
         }
@@ -96,9 +95,9 @@ internal object Entities {
         }
     }
 
-    private fun deepPassed(condition: Condition, holders: List<TagsHolder>, conditions: List<Condition>): Boolean {
-        if (condition.depends == null) return true
-        return condition.depends.any { set ->
+    fun deepPassed(depends: List<Set<UUID>>?, holders: List<TagsHolder>, conditions: List<Condition>): Boolean {
+        if (depends == null) return true
+        return depends.any { set ->
             set.all { id ->
                 isPassed(
                     condition = conditions.firstOrNull { it.id == id } ?: TODO(),
@@ -111,6 +110,6 @@ internal object Entities {
 
     fun isPassed(condition: Condition, holders: List<TagsHolder>, conditions: List<Condition>): Boolean {
         return isPassed(condition = condition, holders = holders) &&
-            deepPassed(condition = condition, holders = holders, conditions = conditions)
+            deepPassed(depends = condition.depends, holders = holders, conditions = conditions)
     }
 }
