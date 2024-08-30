@@ -106,33 +106,47 @@ internal class Renders(
                     measure = measure,
                     lineWidth = 0.2,
                 )
-                when (barrier.lock.opened) {
-                    false -> {
-                        canvas.polygons.drawRectangle(
-                            color = Color.YELLOW,
-                            pointTopLeft = startPoint.moved(length = 1.0, angle = angle),
-                            size = size,
-                            pointOfRotation = startPoint.moved(length = 1.0, angle = angle),
-                            offset = offset,
-                            measure = measure,
-                            direction = angle,
-                        )
-                    }
-                    null -> if (barrier.lock.required != null) {
-                        canvas.polygons.drawRectangle(
-                            color = Color.YELLOW,
-                            pointTopLeft = startPoint.moved(length = 1.0, angle = angle),
-                            size = size,
-                            pointOfRotation = startPoint.moved(length = 1.0, angle = angle),
-                            offset = offset,
-                            measure = measure,
-                            direction = angle,
-                            lineWidth = 0.05,
-                        )
-                    }
-                    true -> Unit
+                if (barrier.lock.opened == false) {
+                    canvas.polygons.drawRectangle(
+                        color = Color.YELLOW,
+                        pointTopLeft = startPoint.moved(length = 0.5, angle = angle),
+                        size = size,
+                        pointOfRotation = startPoint.moved(length = 0.5, angle = angle),
+                        offset = offset,
+                        measure = measure,
+                        direction = angle,
+                    )
+                } else if (barrier.lock.opened == null && barrier.lock.required != null) {
+                    canvas.polygons.drawRectangle(
+                        color = Color.YELLOW,
+                        pointTopLeft = startPoint.moved(length = 0.5, angle = angle),
+                        size = size,
+                        pointOfRotation = startPoint.moved(length = 0.5, angle = angle),
+                        offset = offset,
+                        measure = measure,
+                        direction = angle,
+                        lineWidth = 0.05,
+                    )
                 }
                 if (barrier.lock.conditions != null) {
+                    val passed = Entities.deepPassed(
+                        depends = barrier.lock.conditions,
+                        holders = env.relays,
+                        conditions = env.conditions,
+                    )
+                    if (!passed) {
+                        canvas.polygons.drawRectangle(
+                            color = Color.RED,
+                            pointTopLeft = startPoint.moved(length = 1.0, angle = angle),
+                            size = size,
+                            pointOfRotation = startPoint.moved(length = 1.0, angle = angle),
+                            offset = offset,
+                            measure = measure,
+                            direction = angle,
+                        )
+                    }
+                }
+                if (barrier.conditions != null) {
                     canvas.polygons.drawRectangle(
                         color = Color.RED,
                         pointTopLeft = finishPoint.moved(length = 1.0, angle = angle + kotlin.math.PI),

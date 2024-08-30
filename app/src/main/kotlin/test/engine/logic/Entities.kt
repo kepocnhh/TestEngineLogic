@@ -73,8 +73,18 @@ internal object Entities {
     ): Barrier? {
         var nearest: Pair<Barrier, Double>? = null
         for (barrier in barriers) {
-            if (barrier.lock.conditions != null) {
-                if (barrier.lock.required == null || barrier.lock.opened == true) continue
+//            if (barrier.conditions == null) {
+//                // noop
+//            } else {
+//                if (barrier.lock.required != null) {
+//                    if (barrier.lock.opened == true) continue
+//                } else {
+//                    continue
+//                }
+//            }
+            if (barrier.conditions != null) {
+                if (barrier.lock.required == null) continue
+                if (barrier.lock.opened == true) continue
             }
             val distance = barrier.vector.getShortestDistance(target)
             if (distance.lt(other = minDistance, points = 12)) continue

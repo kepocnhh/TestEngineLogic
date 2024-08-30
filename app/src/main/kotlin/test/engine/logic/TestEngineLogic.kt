@@ -297,6 +297,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Barrier(
                     vector = pointOf(x = -11, y = -4) + pointOf(x = -11, y = -8),
                     opened = false,
+                    conditions = null,
                     lock = Lock(
                         opened = null,
                         required = listOf(
@@ -308,6 +309,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Barrier(
                     vector = pointOf(x = -11, y = -10) + pointOf(x = -11, y = -14),
                     opened = false,
+                    conditions = null,
                     lock = Lock(
                         opened = false,
                         required = listOf(
@@ -320,6 +322,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Barrier(
                     vector = pointOf(x = -5, y = 2) + pointOf(x = -1, y = 2),
                     opened = false,
+                    conditions = null,
                     lock = Lock(
                         opened = true,
                         required = null,
@@ -329,18 +332,22 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Barrier(
                     vector = pointOf(x = 1, y = 2) + pointOf(x = 5, y = 2),
                     opened = false,
+                    conditions = listOf(
+                        setOf(UUID(0x0000100000000001, 1)),
+                    ),
                     lock = Lock(
                         opened = null,
                         required = null,
-                        conditions = listOf(
-                            setOf(UUID(0x0000100000000001, 1)),
-                        ),
+                        conditions = null,
                     ),
                 ),
                 //
                 Barrier(
                     vector = pointOf(x = 11, y = -4) + pointOf(x = 11, y = -8),
                     opened = false,
+                    conditions = listOf(
+                        setOf(UUID(0x0000100000000001, 1)),
+                    ),
                     lock = Lock(
                         opened = null,
                         required = listOf(
@@ -354,14 +361,15 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Barrier(
                     vector = pointOf(x = 11, y = -10) + pointOf(x = 11, y = -14),
                     opened = false,
+                    conditions = listOf(
+                        setOf(UUID(0x0000100000000001, 1)),
+                    ),
                     lock = Lock(
                         opened = false,
                         required = listOf(
                             setOf(UUID(0x0000100000000003, 1)),
                         ),
-                        conditions = listOf(
-                            setOf(UUID(0x0000100000000001, 1)),
-                        ),
+                        conditions = null,
                     ),
                 ),
             )
