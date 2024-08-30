@@ -73,15 +73,6 @@ internal object Entities {
     ): Barrier? {
         var nearest: Pair<Barrier, Double>? = null
         for (barrier in barriers) {
-//            if (barrier.conditions == null) {
-//                // noop
-//            } else {
-//                if (barrier.lock.required != null) {
-//                    if (barrier.lock.opened == true) continue
-//                } else {
-//                    continue
-//                }
-//            }
             if (barrier.conditions != null) {
                 if (barrier.lock.required == null) continue
                 if (barrier.lock.opened == true) continue

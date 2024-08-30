@@ -20,51 +20,42 @@ internal class Interactions(private val env: Environment) {
         }
     }
 
-    private fun checkOpened(lock: Lock): Boolean {
-        if (lock.opened != true && lock.required != null) {
-            val opened = isOpened(
-                tags = lock.required,
-                items = env.items.filter { it.owner == env.player.id },
-            )
-            if (!opened) return false
-            if (lock.opened == false) lock.opened = true
-        }
-        return Entities.deepPassed(
-            depends = lock.conditions,
+    private fun isLocked(depends: List<Set<UUID>>?): Boolean {
+        return !Entities.deepPassed(
+            depends = depends,
             holders = env.relays,
             conditions = env.conditions,
         )
     }
 
+    private fun open(lock: Lock): Boolean {
+        if (lock.opened == true || lock.required == null) return true
+        val opened = isOpened(
+            tags = lock.required,
+            items = env.items.filter { it.owner == env.player.id },
+        )
+        if (lock.opened == false && opened) lock.opened = true
+        return opened
+    }
+
+    private fun checkOpened(lock: Lock): Boolean {
+        return open(lock = lock) && !isLocked(depends = lock.conditions)
+    }
+
     private fun onInteractionBarrier(barrier: Barrier) {
         if (!checkOpened(lock = barrier.lock)) return
-        val passed = Entities.deepPassed(
-            depends = barrier.conditions,
-            holders = env.relays,
-            conditions = env.conditions,
-        )
-        if (passed) barrier.opened = !barrier.opened
+        if (isLocked(depends = barrier.conditions)) return
+        barrier.opened = !barrier.opened
     }
 
     private fun onInteractionRelay(relay: Relay) {
         if (!checkOpened(lock = relay.lock)) return
         relay.enabled = !relay.enabled
         for (barrier in env.barriers) {
-            val opened = Entities.deepPassed(
-                depends = barrier.conditions,
-                holders = env.relays,
-                conditions = env.conditions,
-            )
-            if (!opened) {
+            if (isLocked(depends = barrier.lock.conditions) || isLocked(depends = barrier.conditions)) {
                 barrier.opened = false
                 continue
             }
-            val locked = !Entities.deepPassed(
-                depends = barrier.lock.conditions,
-                holders = env.relays,
-                conditions = env.conditions,
-            )
-            if (locked) continue
             if (barrier.lock.required != null && barrier.lock.opened != true) continue
             if (barrier.conditions == null) continue
             barrier.opened = true

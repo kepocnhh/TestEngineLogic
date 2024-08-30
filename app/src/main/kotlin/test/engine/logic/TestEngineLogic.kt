@@ -345,9 +345,10 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 Barrier(
                     vector = pointOf(x = 11, y = -4) + pointOf(x = 11, y = -8),
                     opened = false,
-                    conditions = listOf(
-                        setOf(UUID(0x0000100000000001, 1)),
-                    ),
+//                    conditions = listOf(
+//                        setOf(UUID(0x0000100000000001, 1)),
+//                    ),
+                    conditions = null,
                     lock = Lock(
                         opened = null,
                         required = listOf(
