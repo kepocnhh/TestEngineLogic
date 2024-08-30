@@ -10,8 +10,7 @@ import test.engine.logic.entity.Relay
 import java.util.UUID
 
 internal class Interactions(private val env: Environment) {
-    private fun isOpened(tags: List<Set<UUID>>?, items: Iterable<Item>): Boolean {
-        if (tags == null) return true
+    private fun isOpened(tags: List<Set<UUID>>, items: Iterable<Item>): Boolean {
         return tags.any { set ->
             set.all { tag ->
                 items.any { item ->
@@ -21,10 +20,35 @@ internal class Interactions(private val env: Environment) {
         }
     }
 
-    private fun isOpened(lock: Lock?): Boolean {
-        if (lock == null) return true
-        if (lock.opened == true) return true
-        val opened = lock.conditions == null && isOpened(
+    private fun checkOpened(lock: Lock): Boolean {
+        if (lock.opened != true && lock.required != null) {
+            val opened = isOpened(
+                tags = lock.required,
+                items = env.items.filter { it.owner == env.player.id },
+            )
+            if (!opened) return false
+            if (lock.opened == false) lock.opened = true
+        }
+        if (lock.conditions != null) {
+            val passed = Entities.deepPassed(
+                depends = lock.conditions,
+                holders = env.relays,
+                conditions = env.conditions,
+            )
+            if (!passed) return false
+        }
+        return true
+    }
+
+    /*
+    private fun isOpened(lock: Lock): Boolean {
+        val passed = Entities.deepPassed(
+            depends = lock.conditions,
+            holders = env.relays,
+            conditions = env.conditions,
+        )
+        if (passed && lock.opened == true) return true
+        val opened = passed && isOpened(
             tags = lock.required,
             items = env.items.filter { it.owner == env.player.id },
         )
@@ -33,19 +57,20 @@ internal class Interactions(private val env: Environment) {
         }
         return opened
     }
+    */
 
     private fun onInteractionBarrier(barrier: Barrier) {
-        if (!isOpened(lock = barrier.lock)) return
+        if (!checkOpened(lock = barrier.lock)) return
         barrier.opened = !barrier.opened
     }
 
     private fun onInteractionRelay(relay: Relay) {
-        if (!isOpened(lock = relay.lock)) return
+        if (!checkOpened(lock = relay.lock)) return
         relay.enabled = !relay.enabled
         for (barrier in env.barriers) {
-            if (barrier.lock == null) continue
             if (barrier.lock.conditions == null) continue
-            barrier.opened = Entities.deepPassed(
+            val opened = barrier.lock.required == null || barrier.lock.opened == true
+            barrier.opened = opened && Entities.deepPassed(
                 depends = barrier.lock.conditions,
                 holders = env.relays,
                 conditions = env.conditions,
@@ -58,7 +83,7 @@ internal class Interactions(private val env: Environment) {
     }
 
     private fun onInteractionCrate(crate: Crate) {
-        if (!isOpened(lock = crate.lock)) return
+        if (!checkOpened(lock = crate.lock)) return
         env.state = Environment.State.Swap(
             index = 0,
             side = true,

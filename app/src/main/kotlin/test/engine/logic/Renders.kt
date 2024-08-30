@@ -95,6 +95,9 @@ internal class Renders(
     ) {
         val size = sizeOf(0.3, 0.3)
         for (barrier in barriers) {
+            val angle = barrier.vector.angle()
+            val startPoint = barrier.vector.start.moved(length = size.diagonal() / 2, angle = angle - kotlin.math.PI / 2 - size.diagonalAngle())
+            val finishPoint = barrier.vector.finish.moved(length = size.diagonal() / 2, angle = angle - kotlin.math.PI / 2 - size.diagonalAngle())
             if (!barrier.opened) {
                 canvas.vectors.draw(
                     color = Color.RED,
@@ -103,9 +106,44 @@ internal class Renders(
                     measure = measure,
                     lineWidth = 0.2,
                 )
+                when (barrier.lock.opened) {
+                    false -> {
+                        canvas.polygons.drawRectangle(
+                            color = Color.YELLOW,
+                            pointTopLeft = startPoint.moved(length = 1.0, angle = angle),
+                            size = size,
+                            pointOfRotation = startPoint.moved(length = 1.0, angle = angle),
+                            offset = offset,
+                            measure = measure,
+                            direction = angle,
+                        )
+                    }
+                    null -> if (barrier.lock.required != null) {
+                        canvas.polygons.drawRectangle(
+                            color = Color.YELLOW,
+                            pointTopLeft = startPoint.moved(length = 1.0, angle = angle),
+                            size = size,
+                            pointOfRotation = startPoint.moved(length = 1.0, angle = angle),
+                            offset = offset,
+                            measure = measure,
+                            direction = angle,
+                            lineWidth = 0.05,
+                        )
+                    }
+                    true -> Unit
+                }
+                if (barrier.lock.conditions != null) {
+                    canvas.polygons.drawRectangle(
+                        color = Color.RED,
+                        pointTopLeft = finishPoint.moved(length = 1.0, angle = angle + kotlin.math.PI),
+                        size = size,
+                        pointOfRotation = finishPoint.moved(length = 1.0, angle = angle + kotlin.math.PI),
+                        offset = offset,
+                        measure = measure,
+                        direction = angle,
+                    )
+                }
             }
-            val angle = barrier.vector.angle()
-            val startPoint = barrier.vector.start.moved(length = size.diagonal() / 2, angle = angle - kotlin.math.PI / 2 - size.diagonalAngle())
             canvas.polygons.drawRectangle(
                 color = Color.YELLOW,
                 pointTopLeft = startPoint,
@@ -115,7 +153,6 @@ internal class Renders(
                 measure = measure,
                 direction = angle,
             )
-            val finishPoint = barrier.vector.finish.moved(length = size.diagonal() / 2, angle = angle - kotlin.math.PI / 2 - size.diagonalAngle())
             canvas.polygons.drawRectangle(
                 color = Color.YELLOW,
                 pointTopLeft = finishPoint,
@@ -242,29 +279,26 @@ internal class Renders(
         val info = FontInfoUtil.getFontInfo(height = 0.75, measure = measure)
         for (index in crates.indices) {
             val crate = crates[index]
-            when (val lock = crate.lock) {
-                null -> Unit
-                else -> when (lock.opened) {
-                    null -> {
-                        canvas.vectors.draw(
-                            color = Color.YELLOW.copy(alpha = 0.5f),
-                            vector = (crate.point + size.center()) + (crate.point + size.center() * -1.0),
-                            offset = offset,
-                            measure = measure,
-                            lineWidth = 0.1,
-                        )
-                    }
-                    false -> {
-                        canvas.vectors.draw(
-                            color = Color.RED,
-                            vector = (crate.point + size.center()) + (crate.point + size.center() * -1.0),
-                            offset = offset,
-                            measure = measure,
-                            lineWidth = 0.1,
-                        )
-                    }
-                    else -> Unit
+            when (crate.lock.opened) {
+                null -> {
+                    canvas.vectors.draw(
+                        color = Color.YELLOW.copy(alpha = 0.5f),
+                        vector = (crate.point + size.center()) + (crate.point + size.center() * -1.0),
+                        offset = offset,
+                        measure = measure,
+                        lineWidth = 0.1,
+                    )
                 }
+                false -> {
+                    canvas.vectors.draw(
+                        color = Color.RED,
+                        vector = (crate.point + size.center()) + (crate.point + size.center() * -1.0),
+                        offset = offset,
+                        measure = measure,
+                        lineWidth = 0.1,
+                    )
+                }
+                else -> Unit
             }
             canvas.polygons.drawRectangle(
                 color = Color.YELLOW,

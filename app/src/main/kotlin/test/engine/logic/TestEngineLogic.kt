@@ -75,16 +75,6 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
     private fun getCorrectedPoint(
         minDistance: Double,
         target: Point,
-        vector: Vector,
-    ): Point {
-        val point = vector.getShortestPoint(target = target)
-        val angle = angleOf(a = point, b = target)
-        return point.moved(length = minDistance, angle = angle)
-    }
-
-    private fun getCorrectedPoint(
-        minDistance: Double,
-        target: Point,
         point: Point,
     ): Point {
         val angle = angleOf(a = point, b = target)
@@ -114,7 +104,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             getCorrectedPoint(
                 minDistance = minDistance,
                 target = target,
-                vector = vector,
+                point = vector.getShortestPoint(target = target),
             )
         } + conflictPoints.map { point ->
             getCorrectedPoint(
@@ -204,6 +194,23 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
         private fun getEnvironment(): Environment {
             val walls = listOf(
                 //
+                pointOf(-11, -15),
+                //
+                pointOf(-11, -10 - 4),
+                pointOf(-11 - 4, -10 - 4),
+                pointOf(-11 - 4, -10),
+                pointOf(-11, -10),
+                //
+                pointOf(-11, -4 - 4),
+                pointOf(-11 - 4, -4 - 4),
+                pointOf(-11 - 4, -4),
+                pointOf(-11, -4),
+                //
+                pointOf(-11, -3),
+                //
+                pointOf(-10, -2),
+                pointOf(-13, 1),
+                pointOf(-10, 4),
                 pointOf(-7, 1),
                 //
                 pointOf(-6, 2),
@@ -259,7 +266,7 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                 pointOf(-6, -20),
                 //
                 pointOf(-7, -19),
-                pointOf(-7, 1), // todo
+                pointOf(-11, -15), // todo
             ).toVectors()
             val player = Player(
                 id = UUID(1_000_001, 1),
@@ -278,33 +285,46 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
             )
             val conditions = listOf(
                 Condition(
-                    id = UUID(1, 1),
+                    id = UUID(0x0000100000000001, 1),
                     depends = null,
                     tags = listOf(
-                        setOf(UUID(0, 1)),
-                    ),
-                ),
-                Condition(
-                    id = UUID(1, 2),
-                    depends = null,
-                    tags = listOf(
-                        setOf(UUID(0, 1), UUID(0, 2)),
-                    ),
-                ),
-                Condition(
-                    id = UUID(1, 3),
-                    depends = null,
-                    tags = listOf(
-                        setOf(UUID(0, 1), UUID(0, 3)),
-                        setOf(UUID(0, 2), UUID(0, 3)),
+                        setOf(UUID(0x0000100000000002, 1)),
                     ),
                 ),
             )
             val barriers = listOf(
+                //
+                Barrier(
+                    vector = pointOf(x = -11, y = -4) + pointOf(x = -11, y = -8),
+                    opened = false,
+                    lock = Lock(
+                        opened = null,
+                        required = listOf(
+                            setOf(UUID(0x0000100000000003, 1)),
+                        ),
+                        conditions = null,
+                    ),
+                ),
+                Barrier(
+                    vector = pointOf(x = -11, y = -10) + pointOf(x = -11, y = -14),
+                    opened = false,
+                    lock = Lock(
+                        opened = false,
+                        required = listOf(
+                            setOf(UUID(0x0000100000000003, 1)),
+                        ),
+                        conditions = null,
+                    ),
+                ),
+                //
                 Barrier(
                     vector = pointOf(x = -5, y = 2) + pointOf(x = -1, y = 2),
                     opened = false,
-                    lock = null,
+                    lock = Lock(
+                        opened = true,
+                        required = null,
+                        conditions = null,
+                    ),
                 ),
                 Barrier(
                     vector = pointOf(x = 1, y = 2) + pointOf(x = 5, y = 2),
@@ -313,110 +333,65 @@ internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
                         opened = null,
                         required = null,
                         conditions = listOf(
-                            setOf(UUID(1, 1)),
+                            setOf(UUID(0x0000100000000001, 1)),
                         ),
                     ),
                 ),
-                Barrier(
-                    vector = pointOf(x = 7, y = 1) + pointOf(x = 10, y = -2),
-                    opened = false,
-                    lock = Lock(
-                        opened = null,
-                        required = null,
-                        conditions = listOf(
-                            setOf(UUID(1, 2)),
-                        ),
-                    ),
-                ),
+                //
                 Barrier(
                     vector = pointOf(x = 11, y = -4) + pointOf(x = 11, y = -8),
                     opened = false,
                     lock = Lock(
                         opened = null,
-                        required = null,
+                        required = listOf(
+                            setOf(UUID(0x0000100000000003, 1)),
+                        ),
                         conditions = listOf(
-                            setOf(UUID(1, 3)),
+                            setOf(UUID(0x0000100000000001, 1)),
+                        ),
+                    ),
+                ),
+                Barrier(
+                    vector = pointOf(x = 11, y = -10) + pointOf(x = 11, y = -14),
+                    opened = false,
+                    lock = Lock(
+                        opened = false,
+                        required = listOf(
+                            setOf(UUID(0x0000100000000003, 1)),
+                        ),
+                        conditions = listOf(
+                            setOf(UUID(0x0000100000000001, 1)),
                         ),
                     ),
                 ),
             )
             val relays = listOf(
                 Relay(
-                    point = pointOf(-3, 5),
+                    point = pointOf(-2, -2),
                     enabled = false,
-                    tags = setOf(UUID(0, 1)),
+                    tags = setOf(UUID(0x0000100000000002, 1)),
                     lock = Lock(
-                        opened = false,
-                        required = listOf(
-                            setOf(UUID(1_001_001, 1)),
-                        ),
+                        opened = true,
+                        required = null,
                         conditions = null,
                     ),
-                ),
-                Relay(
-                    point = pointOf(3, 5),
-                    enabled = false,
-                    tags = setOf(UUID(0, 2)),
-                    lock = Lock(
-                        opened = null,
-                        required = listOf(
-                            setOf(UUID(1_002_001, 1)),
-                        ),
-                        conditions = null,
-                    ),
-                ),
-                Relay(
-                    point = pointOf(10, 2),
-                    enabled = false,
-                    tags = setOf(UUID(0, 3)),
-                    lock = null,
                 ),
             )
             val items = listOf(
                 Item(
                     id = UUID(0x0000100000000000, 1),
-                    tags = emptySet(),
-                    point = MutablePoint(0.0, 0.0),
-                    owner = null,
-                ),
-                Item(
-                    id = UUID(0x0001100000000000, 1),
-                    tags = setOf(UUID(1_001_001, 1)),
-                    point = MutablePoint(0.0, -4.0),
-                    owner = null,
-                ),
-                Item(
-                    id = UUID(0x0002100000000000, 1),
-                    tags = setOf(UUID(1_002_001, 1)),
-                    point = MutablePoint(4.0, -4.0),
+                    tags = setOf(UUID(0x0000100000000003, 1)),
+                    point = MutablePoint(-2.0, -6.0),
                     owner = null,
                 ),
             )
             val crates = listOf(
                 Crate(
                     id = UUID(0x0000200000000000, 1),
-                    point = pointOf(-2, -8),
-                    lock = null,
-                ),
-                Crate(
-                    id = UUID(0x0001200000000000, 1),
-                    point = pointOf(-2, -12),
+                    point = pointOf(-2, -10),
                     lock = Lock(
-                        opened = false,
-                        required = listOf(
-                            setOf(UUID(1_001_001, 1)),
-                        ),
-                        conditions = null,
-                    ),
-                ),
-                Crate(
-                    id = UUID(0x0002200000000000, 1),
-                    point = pointOf(4, -12),
-                    lock = Lock(
-                        opened = null,
-                        required = listOf(
-                            setOf(UUID(1_002_001, 1)),
-                        ),
+                        opened = true,
+                        required = null,
                         conditions = null,
                     ),
                 ),

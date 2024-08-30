@@ -6,5 +6,5 @@ import java.util.UUID
 internal class Crate(
     val id: UUID,
     val point: Point,
-    val lock: Lock?,
+    val lock: Lock,
 )

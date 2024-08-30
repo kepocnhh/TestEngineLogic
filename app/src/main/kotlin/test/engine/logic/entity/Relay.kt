@@ -7,5 +7,5 @@ internal class Relay(
     val point: Point,
     override var enabled: Boolean,
     override val tags: Set<UUID>,
-    val lock: Lock?,
+    val lock: Lock,
 ) : TagsHolder
