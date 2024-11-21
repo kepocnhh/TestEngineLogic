@@ -2,7 +2,7 @@ package test.engine.logic
 
 import sp.kx.lwjgl.engine.Engine
 import sp.kx.lwjgl.engine.EngineInputCallback
-import sp.kx.lwjgl.engine.EngineLogic
+import sp.kx.lwjgl.engine.EngineLogics
 import sp.kx.lwjgl.engine.input.Keyboard
 import sp.kx.lwjgl.entity.Canvas
 import sp.kx.lwjgl.entity.Color
@@ -14,7 +14,7 @@ import sp.kx.math.pointOf
 import sp.kx.math.sizeOf
 import test.engine.logic.util.FontInfoUtil
 
-internal class InputEngineLogic(private val engine: Engine) : EngineLogic {
+internal class InputEngineLogics(private val engine: Engine) : EngineLogics {
     private lateinit var shouldEngineStopUnit: Unit
 
     override val inputCallback = object : EngineInputCallback {
@@ -46,14 +46,14 @@ internal class InputEngineLogic(private val engine: Engine) : EngineLogic {
                 val pointTopLeft = pointOf(x + width * dX, y + width * dY)
                 canvas.texts.draw(
                     info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure),
-                    color = if (isPressed) Color.YELLOW else Color.GREEN,
+                    color = if (isPressed) Color.Yellow else Color.Green,
                     pointTopLeft = pointTopLeft,
                     text = button.name,
                     measure = measure,
                 )
                 if (isPressed) {
                     canvas.polygons.drawRectangle(
-                        color = Color.YELLOW,
+                        color = Color.Yellow,
                         pointTopLeft = pointOf(x + width * dX - width * 0.25, y + width * dY),
                         size = sizeOf(width = width, height = width),
                         lineWidth = 0.1,
@@ -69,7 +69,7 @@ internal class InputEngineLogic(private val engine: Engine) : EngineLogic {
         canvas.texts.draw(
             info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure),
             pointTopLeft = Point.Center,
-            color = Color.GREEN,
+            color = Color.Green,
             text = String.format("%.2f", fps),
             measure = measure,
         )

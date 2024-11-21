@@ -3,6 +3,7 @@ package test.engine.logic
 import sp.kx.lwjgl.engine.Engine
 import sp.kx.lwjgl.entity.Canvas
 import sp.kx.lwjgl.entity.Color
+import sp.kx.lwjgl.entity.copy
 import sp.kx.lwjgl.entity.font.FontInfo
 import sp.kx.lwjgl.entity.input.KeyboardButton
 import sp.kx.math.Offset
@@ -10,12 +11,12 @@ import sp.kx.math.Point
 import sp.kx.math.Size
 import sp.kx.math.Vector
 import sp.kx.math.angle
-import sp.kx.math.minus
 import sp.kx.math.center
 import sp.kx.math.centerPoint
 import sp.kx.math.copy
 import sp.kx.math.measure.Measure
 import sp.kx.math.measure.frequency
+import sp.kx.math.minus
 import sp.kx.math.moved
 import sp.kx.math.offsetOf
 import sp.kx.math.plus
@@ -28,13 +29,11 @@ import test.engine.logic.entity.Crate
 import test.engine.logic.entity.Item
 import test.engine.logic.entity.Relay
 import test.engine.logic.util.FontInfoUtil
-import test.engine.logic.util.copy
 import test.engine.logic.util.diagonal
 import test.engine.logic.util.diagonalAngle
 import test.engine.logic.util.drawRectangle
 import test.engine.logic.util.minus
 import test.engine.logic.util.plus
-import test.engine.logic.util.times
 
 internal class Renders(
     private val engine: Engine,
@@ -46,8 +45,8 @@ internal class Renders(
         measure: Measure<Double, Double>,
     ) {
         canvas.polygons.drawCircle(
-            borderColor = Color.BLUE,
-            fillColor = Color.BLUE.copy(alpha = 0.5f),
+            borderColor = Color.Blue,
+            fillColor = Color.Blue.copy(alpha = 0.5f),
             pointCenter = env.player.moving.point,
             radius = 1.0,
             edgeCount = 16,
@@ -56,14 +55,14 @@ internal class Renders(
             measure = measure,
         )
         canvas.vectors.draw(
-            color = Color.YELLOW,
+            color = Color.Yellow,
             vector = vectorOf(env.player.moving.point, length = 1.0, angle = env.player.turning.direction.expected),
             offset = offset,
             measure = measure,
             lineWidth = 0.1,
         )
         canvas.vectors.draw(
-            color = Color.WHITE,
+            color = Color.White,
             vector = vectorOf(env.player.moving.point, length = 1.0, angle = env.player.turning.direction.actual),
             offset = offset,
             measure = measure,
@@ -79,7 +78,7 @@ internal class Renders(
     ) {
 //        drawVectors(
         canvas.vectors.draw(
-            color = Color.GRAY,
+            color = Color.Gray,
             vectors = walls,
             offset = offset,
             measure = measure,
@@ -100,7 +99,7 @@ internal class Renders(
             val finishPoint = barrier.vector.finish.moved(length = size.diagonal() / 2, angle = angle - kotlin.math.PI / 2 - size.diagonalAngle())
             if (!barrier.opened) {
                 canvas.vectors.draw(
-                    color = Color.RED,
+                    color = Color.Red,
                     vector = barrier.vector,
                     offset = offset,
                     measure = measure,
@@ -108,7 +107,7 @@ internal class Renders(
                 )
                 if (barrier.lock.opened == false) {
                     canvas.polygons.drawRectangle(
-                        color = Color.YELLOW,
+                        color = Color.Yellow,
                         pointTopLeft = startPoint.moved(length = 0.5, angle = angle),
                         size = size,
                         pointOfRotation = startPoint.moved(length = 0.5, angle = angle),
@@ -118,7 +117,7 @@ internal class Renders(
                     )
                 } else if (barrier.lock.opened == null && barrier.lock.required != null) {
                     canvas.polygons.drawRectangle(
-                        color = Color.YELLOW,
+                        color = Color.Yellow,
                         pointTopLeft = startPoint.moved(length = 0.5, angle = angle),
                         size = size,
                         pointOfRotation = startPoint.moved(length = 0.5, angle = angle),
@@ -136,7 +135,7 @@ internal class Renders(
                     )
                     if (!passed) {
                         canvas.polygons.drawRectangle(
-                            color = Color.RED,
+                            color = Color.Red,
                             pointTopLeft = startPoint.moved(length = 1.0, angle = angle),
                             size = size,
                             pointOfRotation = startPoint.moved(length = 1.0, angle = angle),
@@ -148,7 +147,7 @@ internal class Renders(
                 }
                 if (barrier.conditions != null) {
                     canvas.polygons.drawRectangle(
-                        color = Color.RED,
+                        color = Color.Red,
                         pointTopLeft = finishPoint.moved(length = 1.0, angle = angle + kotlin.math.PI),
                         size = size,
                         pointOfRotation = finishPoint.moved(length = 1.0, angle = angle + kotlin.math.PI),
@@ -159,7 +158,7 @@ internal class Renders(
                 }
             }
             canvas.polygons.drawRectangle(
-                color = Color.YELLOW,
+                color = Color.Yellow,
                 pointTopLeft = startPoint,
                 size = size,
                 pointOfRotation = startPoint,
@@ -168,7 +167,7 @@ internal class Renders(
                 direction = angle,
             )
             canvas.polygons.drawRectangle(
-                color = Color.YELLOW,
+                color = Color.Yellow,
                 pointTopLeft = finishPoint,
                 size = size,
                 pointOfRotation = finishPoint,
@@ -191,7 +190,7 @@ internal class Renders(
         val d = size.height - dHeight
         val dSize = sizeOf(width = dHeight, height = dHeight)
         for (relay in relays) {
-            val color = if (relay.enabled) Color.GREEN else Color.RED
+            val color = if (relay.enabled) Color.Green else Color.Red
             canvas.polygons.drawRectangle(
                 color = color,
 //                borderColor = color,
@@ -211,7 +210,7 @@ internal class Renders(
                         val finish = relay.point + offsetOf(dX = size.width / 2, dY = size.height / 2)
                         val vector = start + finish
 //                        canvas.vectors.draw(
-//                            color = Color.YELLOW,
+//                            color = Color.Yellow,
 //                            vector = vector,
 //                            lineWidth = 0.1,
 //                            offset = offset,
@@ -223,7 +222,7 @@ internal class Renders(
 //            val text = if (relay.enabled) "on" else "off"
 //            val textWidth = engine.fontAgent.getTextWidth(info, text)
 //            canvas.texts.draw(
-//                color = Color.BLACK,
+//                color = Color.Black,
 //                info = info,
 //                pointTopLeft = relay.point,
 //                offset = offset + offsetOf(dX = measure.units(textWidth) / 2, dY = size.height / 2) * -1.0,
@@ -236,14 +235,14 @@ internal class Renders(
                 d / 2 - size.width / 2
             }
 //            canvas.polygons.drawRectangle(
-//                color = Color.BLACK.copy(alpha = 0.5f),
+//                color = Color.Black.copy(alpha = 0.5f),
 //                pointTopLeft = relay.point + offsetOf(dX = d / 2 - size.width / 2, dY = - dSize.height / 2),
 //                size = sizeOf(width = size.width - d, height = dHeight),
 //                offset = offset,
 //                measure = measure,
 //            )
             canvas.polygons.drawRectangle(
-                color = Color.BLACK,
+                color = Color.Black,
                 pointTopLeft = relay.point + offsetOf(dX = dX, dY = - dSize.height / 2),
                 size = dSize,
                 offset = offset,
@@ -264,7 +263,7 @@ internal class Renders(
             val item = items[index]
             if (item.owner != null) continue
             canvas.polygons.drawRectangle(
-                color = Color.GREEN,
+                color = Color.Green,
                 pointTopLeft = item.point,
                 size = size,
                 offset = offset + size.center() * -1.0,
@@ -273,7 +272,7 @@ internal class Renders(
             val text = "i${index % 10}"
             val textWidth = engine.fontAgent.getTextWidth(info, text)
             canvas.texts.draw(
-                color = Color.BLACK,
+                color = Color.Black,
                 info = info,
                 pointTopLeft = item.point,
                 offset = offset + offsetOf(dX = measure.units(textWidth) / 2, dY = measure.units(info.height.toDouble()) / 2) * -1.0,
@@ -296,7 +295,7 @@ internal class Renders(
             when (crate.lock.opened) {
                 null -> {
                     canvas.vectors.draw(
-                        color = Color.YELLOW.copy(alpha = 0.5f),
+                        color = Color.Yellow.copy(alpha = 0.5f),
                         vector = (crate.point + size.center()) + (crate.point + size.center() * -1.0),
                         offset = offset,
                         measure = measure,
@@ -305,7 +304,7 @@ internal class Renders(
                 }
                 false -> {
                     canvas.vectors.draw(
-                        color = Color.RED,
+                        color = Color.Red,
                         vector = (crate.point + size.center()) + (crate.point + size.center() * -1.0),
                         offset = offset,
                         measure = measure,
@@ -315,7 +314,7 @@ internal class Renders(
                 else -> Unit
             }
             canvas.polygons.drawRectangle(
-                color = Color.YELLOW,
+                color = Color.Yellow,
                 pointTopLeft = crate.point,
                 size = size,
                 offset = offset + size.center() * -1.0,
@@ -325,7 +324,7 @@ internal class Renders(
             val text = "c${index % 10}"
             val textWidth = engine.fontAgent.getTextWidth(info, text)
             canvas.texts.draw(
-                color = Color.YELLOW,
+                color = Color.Yellow,
                 info = info,
                 pointTopLeft = crate.point,
                 offset = offset + offsetOf(dX = measure.units(textWidth) / 2, dY = measure.units(info.height.toDouble()) / 2) * -1.0,
@@ -360,8 +359,8 @@ internal class Renders(
         )?.point ?: return
         val isPressed = engine.input.keyboard.isPressed(KeyboardButton.F)
         canvas.polygons.drawRectangle(
-            borderColor = Color.GREEN,
-            fillColor = Color.GREEN.copy(alpha = if (isPressed) 0.5f else 0f),
+            borderColor = Color.Green,
+            fillColor = Color.Green.copy(alpha = if (isPressed) 0.5f else 0f),
             pointTopLeft = point,
             size = sizeOf(1.0, 1.0),
             lineWidth = 0.1,
@@ -370,7 +369,7 @@ internal class Renders(
         )
         val info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure)
         canvas.texts.draw(
-            color = Color.GREEN,
+            color = Color.Green,
             info = info,
             pointTopLeft = point,
             offset = offset + offsetOf(dX = 1.25, dY = -1.5),
@@ -390,8 +389,8 @@ internal class Renders(
         measure: Measure<Double, Double>,
     ) {
         canvas.polygons.drawRectangle(
-            borderColor = Color.GREEN,
-            fillColor = Color.BLACK.copy(alpha = 0.75f),
+            borderColor = Color.Green,
+            fillColor = Color.Black.copy(alpha = 0.75f),
             pointTopLeft = Point.Center + offset,
             size = size,
             lineWidth = 0.1,
@@ -402,7 +401,7 @@ internal class Renders(
                 info = info,
                 pointTopLeft = Point.Center + offset + offsetOf(1, -1),
                 measure = measure,
-                color = if (selected == null) Color.GREEN else Color.YELLOW,
+                color = if (selected == null) Color.Green else Color.Yellow,
                 text = title,
             )
         }
@@ -411,7 +410,7 @@ internal class Renders(
                 info = info,
                 pointTopLeft = Point.Center + offset + offsetOf(0.75, 0.5),
                 measure = measure,
-                color = Color.GREEN.copy(alpha = 0.5f),
+                color = Color.Green.copy(alpha = 0.5f),
                 text = "no items",
             )
             return
@@ -419,7 +418,7 @@ internal class Renders(
         for (index in items.indices) {
             val item = items[index]
             val isSelected = selected == index
-            val color = if (isSelected) Color.YELLOW else Color.GREEN
+            val color = if (isSelected) Color.Yellow else Color.Green
             val text = "#${env.items.indexOf(item)} ${item.id.toString().substring(0, 4)}"
             val prefix = if (isSelected) "> " else "  "
             canvas.texts.draw(
@@ -483,14 +482,14 @@ internal class Renders(
         measure: Measure<Double, Double>,
     ) {
         canvas.vectors.draw(
-            color = Color.GREEN,
+            color = Color.Green,
             vector = vectorOf(-1.0, 0.0, 1.0, 0.0),
             offset = offset,
             measure = measure,
             lineWidth = 0.1,
         )
         canvas.vectors.draw(
-            color = Color.GREEN,
+            color = Color.Green,
             vector = vectorOf(0.0, -1.0, 0.0, 1.0),
             offset = offset,
             measure = measure,
@@ -498,7 +497,7 @@ internal class Renders(
         )
         val info = FontInfoUtil.getFontInfo(height = 0.75, measure = measure)
         canvas.texts.draw(
-            color = Color.GREEN,
+            color = Color.Green,
             info = info,
             pointTopLeft = Point.Center.moved(0.5),
             text = String.format("x: %.2f y: %.2f", env.camera.point.x, env.camera.point.y),
@@ -515,7 +514,7 @@ internal class Renders(
     ) {
         val pictureSize = engine.property.pictureSize - measure
         canvas.vectors.draw(
-            color = Color.WHITE,
+            color = Color.White,
             vector = vectorOf(
                 startX = pictureSize.width / 2,
                 startY = 0.0,
@@ -526,7 +525,7 @@ internal class Renders(
             measure = measure,
         )
         canvas.vectors.draw(
-            color = Color.GREEN,
+            color = Color.Green,
             vector = vectorOf(
                 startX = 0.0,
                 startY = 1.0,
@@ -537,7 +536,7 @@ internal class Renders(
             measure = measure,
         )
         canvas.vectors.draw(
-            color = Color.WHITE,
+            color = Color.White,
             vector = vectorOf(
                 startX = 0.0,
                 startY = pictureSize.height / 2,
@@ -548,7 +547,7 @@ internal class Renders(
             measure = measure,
         )
         canvas.vectors.draw(
-            color = Color.GREEN,
+            color = Color.Green,
             vector = vectorOf(
                 startX = 1.0,
                 startY = 0.0,
@@ -565,7 +564,7 @@ internal class Renders(
         for (x in xNumbers) {
             val textY = if (x % 2 == 0) 1.0 else 0.25
             canvas.texts.draw(
-                color = Color.GREEN,
+                color = Color.Green,
                 info = info,
                 pointTopLeft = pointOf(x = x + offset.dX + 0.25, y = textY),
                 measure = measure,
@@ -573,7 +572,7 @@ internal class Renders(
             )
             val lineY = if (x % 2 == 0) 1.5 else 0.5
             canvas.vectors.draw(
-                color = Color.GREEN,
+                color = Color.Green,
                 vector = pointOf(x = x + offset.dX, y = 1.0) + pointOf(x = x + offset.dX, y = lineY),
                 lineWidth = 0.1,
                 measure = measure,
@@ -585,7 +584,7 @@ internal class Renders(
         for (y in yNumbers) {
             val textX = if (y % 2 == 0) 1.25 else 1.75
             canvas.texts.draw(
-                color = Color.GREEN,
+                color = Color.Green,
                 info = info,
                 pointTopLeft = pointOf(x = textX, y = y + offset.dY),
                 measure = measure,
@@ -593,7 +592,7 @@ internal class Renders(
             )
             val lineX = if (y % 2 == 0) 0.5 else 1.5
             canvas.vectors.draw(
-                color = Color.GREEN,
+                color = Color.Green,
                 vector = pointOf(x = 1.0, y = y + offset.dY) + pointOf(x = lineX, y = y + offset.dY),
                 lineWidth = 0.1,
                 measure = measure,
@@ -609,7 +608,7 @@ internal class Renders(
         val pictureSize = engine.property.pictureSize - measure
         var y = 0
         canvas.texts.draw(
-            color = Color.GREEN,
+            color = Color.Green,
             info = info,
             pointTopLeft = pointOf(
                 x = 4.0,
@@ -626,7 +625,7 @@ internal class Renders(
         )
         val point = env.player.moving.point
         canvas.texts.draw(
-            color = Color.GREEN,
+            color = Color.Green,
             info = info,
             pointTopLeft = pointOf(
                 x = 4.0,
@@ -642,7 +641,7 @@ internal class Renders(
 //        canvas.texts.draw(
 //            info = FontInfoUtil.getFontInfo(height = 1.0, measure = measure),
 //            pointTopLeft = Point.Center,
-//            color = Color.GREEN,
+//            color = Color.Green,
 //            text = String.format("%.2f", fps),
 //            measure = measure,
 //        )

@@ -2,7 +2,7 @@ package test.engine.logic
 
 import sp.kx.lwjgl.engine.Engine
 import sp.kx.lwjgl.engine.EngineInputCallback
-import sp.kx.lwjgl.engine.EngineLogic
+import sp.kx.lwjgl.engine.EngineLogics
 import sp.kx.lwjgl.engine.input.Keyboard
 import sp.kx.lwjgl.entity.Canvas
 import sp.kx.lwjgl.entity.input.KeyboardButton
@@ -39,7 +39,7 @@ import test.engine.logic.util.toVectors
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-internal class TestEngineLogic(private val engine: Engine) : EngineLogic {
+internal class TestEngineLogics(private val engine: Engine) : EngineLogics {
     private val env = getEnvironment()
     private val interactions = Interactions(env = env)
     private val renders = Renders(engine = engine, env = env)

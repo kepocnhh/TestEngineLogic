@@ -4,5 +4,5 @@ import sp.kx.lwjgl.util.EngineUtil
 
 fun main() {
 //    EngineUtil.run(::InputEngineLogic)
-    EngineUtil.run(::TestEngineLogic)
+    EngineUtil.run(::TestEngineLogics)
 }

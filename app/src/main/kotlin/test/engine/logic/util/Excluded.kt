@@ -1,7 +1,6 @@
 package test.engine.logic.util
 
 import org.lwjgl.opengl.GL11
-import sp.kx.lwjgl.entity.Canvas
 import sp.kx.lwjgl.entity.Color
 import sp.kx.lwjgl.entity.PolygonDrawer
 import sp.kx.lwjgl.opengl.GLUtil
