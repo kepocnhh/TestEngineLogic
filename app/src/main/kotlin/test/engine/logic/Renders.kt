@@ -31,7 +31,6 @@ import test.engine.logic.entity.Relay
 import test.engine.logic.util.FontInfoUtil
 import test.engine.logic.util.diagonal
 import test.engine.logic.util.diagonalAngle
-import test.engine.logic.util.drawRectangle
 import test.engine.logic.util.minus
 import test.engine.logic.util.plus
 
