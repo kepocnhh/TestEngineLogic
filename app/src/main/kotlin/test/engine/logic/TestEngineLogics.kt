@@ -60,7 +60,7 @@ internal class TestEngineLogics(private val engine: Engine) : EngineLogics {
                     }
                     return
                 }
-                KeyboardButton.ESCAPE -> {
+                KeyboardButton.Escape -> {
                     if (env.state == Environment.State.Walking) {
                         if (isPressed) shouldEngineStopUnit = Unit
                         return
@@ -160,10 +160,10 @@ internal class TestEngineLogics(private val engine: Engine) : EngineLogics {
 
     private fun moveCamera() {
         val offset = engine.input.keyboard.getOffset(
-            upKey = KeyboardButton.UP,
-            downKey = KeyboardButton.DOWN,
-            leftKey = KeyboardButton.LEFT,
-            rightKey = KeyboardButton.RIGHT,
+            upKey = KeyboardButton.Up,
+            downKey = KeyboardButton.Down,
+            leftKey = KeyboardButton.Left,
+            rightKey = KeyboardButton.Right,
         )
         if (offset.isEmpty()) return
         val timeDiff = engine.property.time.diff()
